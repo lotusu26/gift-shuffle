@@ -132,6 +132,18 @@ function centerOf(node: HTMLElement): GiftOrigin {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
+function stageScale() {
+  const value = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--stage-scale"),
+  );
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function visibleWidth(source: HTMLElement | undefined, fallback: number) {
+  const width = source?.getBoundingClientRect().width ?? 0;
+  return width > 0 ? width : fallback * stageScale();
+}
+
 export function GiftApp() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [loadError, setLoadError] = useState("");
@@ -146,9 +158,16 @@ export function GiftApp() {
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyHint, setCopyHint] = useState("");
+  const [pageScale, setPageScale] = useState(1);
   const spinToken = useRef(0);
   const codeRef = useRef<HTMLParagraphElement>(null);
   const slotRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const blockDrag = (event: DragEvent) => event.preventDefault();
+    window.addEventListener("dragstart", blockDrag);
+    return () => window.removeEventListener("dragstart", blockDrag);
+  }, []);
 
   const applyBoard = useCallback((board: Board) => {
     setAssigned(true);
@@ -298,7 +317,7 @@ export function GiftApp() {
       receiverName: person.name,
       tone: toneFor(Math.max(index, 0)),
       origin,
-      width: source && source.offsetWidth > 0 ? source.offsetWidth : people.length > 6 ? 78 : 96,
+      width: visibleWidth(source, people.length > 6 ? 78 : 96),
     };
   }
 
@@ -413,10 +432,10 @@ export function GiftApp() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+      <Sparkles />
       <CursorSnow />
-      <FittedPage>
+      <FittedPage onScale={setPageScale}>
       <main className="relative w-full px-6 py-8">
-        <Sparkles />
         <header className="relative text-center">
           <h1 className="mt-3 text-[3.3rem] font-bold tracking-tight whitespace-nowrap text-[#f6ead2]">
             MERRY CHRISTMAS
@@ -581,13 +600,13 @@ export function GiftApp() {
               aria-label="닫기"
               onClick={closeDialog}
             />
-            <div className="gift-stage pointer-events-none relative z-[72] flex flex-col items-center">
+            <ScaledStage scale={pageScale}>
               <div ref={slotRef} className="h-28 w-28 shrink-0" aria-hidden />
               <div
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="gift-stage-title"
-                className="gift-popup-card pointer-events-auto relative mt-12 w-[min(27rem,calc(100vw-2rem))] px-6 pb-7 pt-24 text-center text-[var(--ink)]"
+                className="gift-popup-card pointer-events-auto relative mt-12 w-[27rem] px-6 pb-7 pt-24 text-center text-[var(--ink)]"
               >
               <PixelGarland />
               {dialog.kind === "spin" || dialog.kind === "landed" ? (
@@ -620,7 +639,7 @@ export function GiftApp() {
                   </p>
                   <p
                     ref={codeRef}
-                    className="mt-3 break-all rounded-2xl bg-[var(--night)] px-4 py-4 font-mono text-lg tracking-wide text-[var(--cream)]"
+                    className="selectable mt-3 break-all rounded-2xl bg-[var(--night)] px-4 py-4 font-mono text-lg tracking-wide text-[var(--cream)]"
                   >
                     {dialog.giftCode}
                   </p>
@@ -654,7 +673,7 @@ export function GiftApp() {
                 </>
               ) : null}
             </div>
-          </div>
+            </ScaledStage>
           </div>
           <GiftFlight origin={dialog.origin} slot={slotRef}>
             <CenterGift
@@ -740,30 +759,21 @@ const FLAKE_FILL = {
   red: "#c7271a",
 } as const;
 
-const SPARKS = [
-  { top: "8%", left: "6%", size: 3, delay: "0s", duration: "2.2s", gold: false },
-  { top: "14%", left: "18%", size: 2, delay: "0.6s", duration: "2.8s", gold: true },
-  { top: "6%", left: "32%", size: 2, delay: "1.4s", duration: "2.4s", gold: false },
-  { top: "11%", left: "48%", size: 3, delay: "0.2s", duration: "3s", gold: true },
-  { top: "7%", left: "64%", size: 2, delay: "1.1s", duration: "2.1s", gold: false },
-  { top: "16%", left: "78%", size: 3, delay: "0.4s", duration: "2.6s", gold: true },
-  { top: "9%", left: "90%", size: 2, delay: "1.8s", duration: "2.3s", gold: false },
-  { top: "24%", left: "4%", size: 2, delay: "0.9s", duration: "2.7s", gold: false },
-  { top: "28%", left: "92%", size: 3, delay: "0.3s", duration: "2.5s", gold: true },
-  { top: "36%", left: "12%", size: 2, delay: "1.6s", duration: "2.2s", gold: true },
-  { top: "40%", left: "86%", size: 2, delay: "0.1s", duration: "3.1s", gold: false },
-  { top: "48%", left: "3%", size: 3, delay: "1.2s", duration: "2.4s", gold: false },
-  { top: "52%", left: "94%", size: 2, delay: "0.7s", duration: "2.9s", gold: true },
-  { top: "60%", left: "8%", size: 2, delay: "1.5s", duration: "2.2s", gold: true },
-  { top: "64%", left: "90%", size: 3, delay: "0.5s", duration: "2.6s", gold: false },
-  { top: "72%", left: "14%", size: 2, delay: "1.9s", duration: "2.3s", gold: false },
-  { top: "76%", left: "84%", size: 2, delay: "0.8s", duration: "2.8s", gold: true },
-  { top: "84%", left: "6%", size: 3, delay: "1.3s", duration: "2.4s", gold: false },
-  { top: "88%", left: "22%", size: 2, delay: "0.2s", duration: "3s", gold: true },
-  { top: "86%", left: "70%", size: 2, delay: "1.7s", duration: "2.1s", gold: false },
-  { top: "92%", left: "48%", size: 3, delay: "0.9s", duration: "2.7s", gold: true },
-  { top: "34%", left: "96%", size: 2, delay: "1s", duration: "2.5s", gold: false },
-];
+const SPARK_COLS = 8;
+const SPARK_ROWS = 7;
+const SPARKS = Array.from({ length: SPARK_COLS * SPARK_ROWS }, (_, index) => {
+  const col = index % SPARK_COLS;
+  const row = Math.floor(index / SPARK_COLS);
+  const gold = index % 3 === 0;
+  return {
+    top: `${4 + row * (92 / (SPARK_ROWS - 1)) + ((index * 13) % 5) - 2}%`,
+    left: `${3 + col * (94 / (SPARK_COLS - 1)) + ((index * 17) % 7) - 3}%`,
+    size: gold ? 3 : 2,
+    delay: `${((index * 5) % 18) / 10}s`,
+    duration: `${2 + (index % 6) * 0.2}s`,
+    gold,
+  };
+});
 
 function PixelFlake({
   scale = 3,
@@ -1045,7 +1055,7 @@ function GiftFlight({
       setAtCenter(true);
     }, 40);
     const stick = window.setTimeout(() => setGlued(true), 760);
-    const stage = node.parentElement;
+    const stage = node.parentElement?.parentElement ?? node.parentElement;
     const observer = new ResizeObserver(() => {
       if (!flying) place();
     });
@@ -1167,11 +1177,61 @@ function useVisualViewportHeight() {
   }, []);
 }
 
-function FittedPage({ children }: { children: ReactNode }) {
+function ScaledStage({ scale, children }: { scale: number; children: ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const safe = scale > 0 ? scale : 1;
+
+  useEffect(() => {
+    const node = innerRef.current;
+    if (!node) return;
+    const measure = () => {
+      const width = node.offsetWidth;
+      const height = node.offsetHeight;
+      setBox((current) =>
+        current.width === width && current.height === height ? current : { width, height },
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      className="relative z-[72] shrink-0 overflow-hidden"
+      style={
+        box.width > 0
+          ? { width: box.width * safe, height: box.height * safe, minWidth: 0, minHeight: 0 }
+          : { minWidth: 0, minHeight: 0 }
+      }
+    >
+      <div
+        ref={innerRef}
+        className="gift-stage pointer-events-none flex w-max flex-col items-center"
+        style={{ transform: `scale(${safe})`, transformOrigin: "top left" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FittedPage({
+  children,
+  onScale,
+}: {
+  children: ReactNode;
+  onScale: (scale: number) => void;
+}) {
   const shellRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
+  const onScaleRef = useRef(onScale);
   const [fit, setFit] = useState({ scale: 1, contentW: 0, contentH: 0, bandH: 0 });
+
+  onScaleRef.current = onScale;
 
   useVisualViewportHeight();
 
@@ -1200,6 +1260,8 @@ function FittedPage({ children }: { children: ReactNode }) {
         }
         return { scale, contentW, contentH, bandH };
       });
+      document.documentElement.style.setProperty("--stage-scale", String(scale));
+      onScaleRef.current(scale);
     };
 
     const observer = new ResizeObserver(measure);
@@ -1211,7 +1273,7 @@ function FittedPage({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={shellRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+    <div ref={shellRef} className="relative z-10 flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <FittedBand scale={fit.scale} bandH={fit.bandH} measureRef={bandRef}>
         <KnitBand />
       </FittedBand>
@@ -1303,7 +1365,7 @@ function KnitBand({ flip = false }: { flip?: boolean }) {
 
 function Sparkles() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
       {SPARKS.map((spark) => (
         <span
           key={`${spark.top}-${spark.left}`}

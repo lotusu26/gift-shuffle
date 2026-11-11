@@ -119,6 +119,19 @@
   }
   html {
     font-family: var(--font-ramche), sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  img,
+  svg {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 
