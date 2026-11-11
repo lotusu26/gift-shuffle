@@ -397,13 +397,13 @@ export function GiftApp() {
         <Sparkles />
         <header className="relative mx-auto max-w-xl text-center">
           <p className="text-xs tracking-[0.42em] text-[#c7271a]">메리 크리스마스</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight text-[#dee6ed] sm:text-5xl">
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-[#f6ead2] sm:text-5xl">
             랜덤 선물 뽑기
           </h1>
           <div className="mt-4 flex justify-center">
             <PixelFlake scale={2} />
           </div>
-          <p className="mt-4 text-sm leading-6 text-[#c5d4e6] sm:text-base">
+          <p className="mt-4 text-sm leading-6 text-[#eadcc8] sm:text-base">
             {assigned
               ? "자기 이름을 누르면 다른 사람의 선물이 열려요."
               : "이름과 카카오톡 선물하기 코드를 넣은 뒤, 한 번에 돌려요."}
@@ -475,18 +475,21 @@ export function GiftApp() {
                   : `${opened}명 확인 · ${people.length - opened}명 남음`}
               </p>
               <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {people.map((person) => (
+                {people.map((person, index) => (
                   <li key={person.id}>
                     <button
                       type="button"
                       onClick={() => openGift(person)}
-                      className="knit-patch flex min-h-52 w-full flex-col items-center justify-center gap-3 px-3 py-5 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dee6ed]"
+                      className="flex min-h-52 w-full flex-col items-center justify-end gap-2 bg-transparent px-2 py-4 transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f6ead2]"
                     >
-                      <PixelFlake scale={3} tone={person.revealed ? "red" : "navy"} />
-                      <span className="line-clamp-2 break-keep text-2xl font-bold leading-tight">
+                      <PixelGift
+                        open={person.revealed}
+                        tone={index % 2 === 0 ? "berry" : "pine"}
+                      />
+                      <span className="line-clamp-2 break-keep text-2xl font-bold leading-tight text-[#f6ead2]">
                         {person.name}
                       </span>
-                      <span className="text-xs tracking-[0.18em] text-[#c7271a]">
+                      <span className="text-xs tracking-[0.18em] text-[#f0c2b4]">
                         {person.revealed ? "다시 보기" : "눌러서 뽑기"}
                       </span>
                     </button>
@@ -725,31 +728,94 @@ function PixelFlake({
   );
 }
 
-function Bobble() {
+const HEART_CELLS: Array<[number, number]> = [
+  [1, 0], [2, 0], [4, 0], [5, 0],
+  [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1],
+  [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2],
+  [1, 3], [2, 3], [3, 3], [4, 3], [5, 3],
+  [2, 4], [3, 4], [4, 4],
+  [3, 5],
+];
+
+function PixelHeart() {
   return (
-    <svg width="16" height="16" viewBox="0 0 5 5" shapeRendering="crispEdges" aria-hidden>
-      <rect x="1" y="0" width="3" height="1" fill="#dee6ed" />
-      <rect x="0" y="1" width="5" height="3" fill="#dee6ed" />
-      <rect x="1" y="4" width="3" height="1" fill="#dee6ed" />
+    <svg width="28" height="24" viewBox="0 0 7 6" shapeRendering="crispEdges" aria-hidden>
+      {HEART_CELLS.map(([x, y]) => (
+        <rect key={`${x},${y}`} x={x} y={y} width="1" height="1" fill="#c44536" />
+      ))}
     </svg>
   );
 }
 
+function PixelGift({
+  open = false,
+  tone = "berry",
+  scale = 4,
+}: {
+  open?: boolean;
+  tone?: "berry" | "pine";
+  scale?: number;
+}) {
+  const yarn = tone === "pine" ? "#2f6b4f" : "#d4534a";
+  const edge = tone === "pine" ? "#1d4a36" : "#a33b34";
+  const wrap = open ? "#f6ead2" : yarn;
+  const border = open ? "#e2d3b4" : edge;
+  const ribbon = open ? yarn : "#f6ead2";
+  const cells: Array<[number, number, string]> = [];
+  for (let y = 6; y <= 16; y += 1) {
+    for (let x = 1; x <= 14; x += 1) {
+      const outline = x === 1 || x === 14 || y === 6 || y === 16;
+      const band = x === 7 || x === 8 || y === 10 || y === 11;
+      cells.push([x, y, outline ? border : band ? ribbon : wrap]);
+    }
+  }
+  const bow = [
+    [2, 1], [3, 1], [4, 1], [5, 1],
+    [1, 2], [2, 2], [3, 2], [4, 2], [5, 2],
+    [2, 3], [3, 3], [4, 3],
+    [10, 1], [11, 1], [12, 1], [13, 1],
+    [10, 2], [11, 2], [12, 2], [13, 2], [14, 2],
+    [11, 3], [12, 3], [13, 3],
+    [6, 2], [7, 1], [7, 2], [7, 3], [8, 1], [8, 2], [8, 3], [9, 2],
+    [7, 4], [8, 4], [7, 5], [8, 5],
+  ];
+  for (const [x, y] of bow) cells.push([x, y, ribbon]);
+  return (
+    <svg
+      width={16 * scale}
+      height={18 * scale}
+      viewBox="0 0 16 18"
+      shapeRendering="crispEdges"
+      aria-hidden
+    >
+      {cells.map(([x, y, fill]) => (
+        <rect key={`${x},${y}`} x={x} y={y} width="1" height="1" fill={fill} />
+      ))}
+    </svg>
+  );
+}
+
+const YOKE = ["heart", "flake", "gift", "heart", "flake", "gift", "heart"] as const;
+
 function KnitBand({ flip = false }: { flip?: boolean }) {
   return (
-    <div className={flip ? "flex flex-col-reverse" : "flex flex-col"} aria-hidden>
-      <div className="scallop" />
-      <div className="flex justify-evenly px-3 py-2">
-        {Array.from({ length: 9 }, (_, index) => (
-          <Bobble key={index} />
-        ))}
-      </div>
-      <div className="flex justify-evenly px-2 py-1">
-        {Array.from({ length: 5 }, (_, index) => (
-          <PixelFlake key={index} scale={3} />
-        ))}
-      </div>
+    <div className={flip ? "sweater-yoke flex flex-col-reverse" : "sweater-yoke"} aria-hidden>
       <div className="dash-row" />
+      <div className="flex items-end justify-evenly px-2 py-2">
+        {YOKE.map((kind, index) => {
+          if (kind === "heart") return <PixelHeart key={`${kind}-${index}`} />;
+          if (kind === "flake") {
+            return <PixelFlake key={`${kind}-${index}`} scale={2} tone="navy" />;
+          }
+          return (
+            <PixelGift
+              key={`${kind}-${index}`}
+              scale={2}
+              tone={index % 2 === 0 ? "berry" : "pine"}
+            />
+          );
+        })}
+      </div>
       <div className="dash-row dash-row-offset" />
     </div>
   );
