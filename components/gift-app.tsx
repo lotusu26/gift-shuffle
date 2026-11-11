@@ -391,16 +391,19 @@ export function GiftApp() {
   const opened = people.filter((person) => person.revealed).length;
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
-      <Snow />
-      <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-10 sm:px-6 sm:py-14">
-        <header className="mx-auto max-w-xl text-center">
-          <p className="text-xs tracking-[0.42em] text-[#f2d48a]">메리 크리스마스</p>
-          <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight text-[#fffaf3] sm:text-5xl">
+    <div className="relative flex flex-1 flex-col">
+      <KnitBand />
+      <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">
+        <Sparkles />
+        <header className="relative mx-auto max-w-xl text-center">
+          <p className="text-xs tracking-[0.42em] text-[#c7271a]">메리 크리스마스</p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-[#dee6ed] sm:text-5xl">
             랜덤 선물 뽑기
           </h1>
-          <Lights />
-          <p className="mt-4 text-sm leading-6 text-[#d7efe0] sm:text-base">
+          <div className="mt-4 flex justify-center">
+            <PixelFlake scale={2} />
+          </div>
+          <p className="mt-4 text-sm leading-6 text-[#c5d4e6] sm:text-base">
             {assigned
               ? "자기 이름을 누르면 다른 사람의 선물이 열려요."
               : "이름과 카카오톡 선물하기 코드를 넣은 뒤, 한 번에 돌려요."}
@@ -409,17 +412,17 @@ export function GiftApp() {
 
         <div className="mt-10 flex flex-1 flex-col">
           {status === "loading" ? (
-            <p className="py-20 text-center text-[#d7efe0]">명단을 불러오는 중</p>
+            <p className="py-20 text-center text-[#dee6ed]">명단을 불러오는 중</p>
           ) : null}
 
           {status === "error" ? (
-            <div className="mx-auto max-w-xl overflow-hidden rounded-[1.6rem] bg-[#fffaf3] text-center text-[#1a3d2c] shadow-[0_24px_70px_rgba(4,20,12,0.35)]">
-              <div className="bg-[#c23b2e] px-6 py-3 text-sm tracking-[0.2em] text-[#fffaf3]">
+            <div className="knit-patch mx-auto max-w-xl text-center">
+              <div className="bg-[#c7271a] px-6 py-3 text-sm tracking-[0.2em] text-[#f7f4f2]">
                 크리스마스
               </div>
               <div className="px-6 py-8">
-              <p className="font-serif text-2xl">명단을 불러오지 못했어요</p>
-              <p className="mt-2 text-sm text-[#5d6b5a]">{loadError}</p>
+              <p className="text-2xl font-bold">명단을 불러오지 못했어요</p>
+              <p className="mt-2 text-sm text-[#3d5a86]">{loadError}</p>
               <Button
                 className="mt-6 h-11 px-5"
                 onClick={() => {
@@ -466,7 +469,7 @@ export function GiftApp() {
 
           {status === "ready" && assigned ? (
             <section>
-              <p className="text-center text-sm text-[#d7efe0]">
+              <p className="text-center text-sm text-[#c5d4e6]">
                 {opened === people.length
                   ? "모두 확인했어요. 연 이름은 다시 눌러 코드를 볼 수 있어요."
                   : `${opened}명 확인 · ${people.length - opened}명 남음`}
@@ -477,43 +480,13 @@ export function GiftApp() {
                     <button
                       type="button"
                       onClick={() => openGift(person)}
-                      className={
-                        person.revealed
-                          ? "relative flex min-h-52 w-full flex-col items-center justify-end gap-2 overflow-hidden rounded-[1.4rem] bg-[#fffaf3] px-3 pb-5 pt-8 text-[#1a3d2c] shadow-[0_18px_40px_rgba(4,20,12,0.28)] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2d48a]"
-                          : "relative flex min-h-52 w-full flex-col items-center justify-end gap-2 overflow-hidden rounded-[1.4rem] bg-[#1c6b45] px-3 pb-5 pt-6 text-[#f7fff8] shadow-[0_18px_40px_rgba(4,20,12,0.35)] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2d48a]"
-                      }
+                      className="knit-patch flex min-h-52 w-full flex-col items-center justify-center gap-3 px-3 py-5 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dee6ed]"
                     >
-                      {person.revealed ? (
-                        <span className="absolute inset-x-0 top-0 h-2 bg-[#c23b2e]" />
-                      ) : (
-                        <>
-                          <span className="pointer-events-none absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 bg-[#e7c56a]" />
-                          <span className="pointer-events-none absolute inset-x-0 top-[42%] h-3 bg-[#c23b2e]" />
-                        </>
-                      )}
-                      {person.revealed ? (
-                        <span className="relative text-xs tracking-[0.22em] text-[#c23b2e]">
-                          받음
-                        </span>
-                      ) : (
-                        <GiftBow />
-                      )}
-                      <span
-                        className={
-                          person.revealed
-                            ? "relative line-clamp-2 break-keep font-serif text-2xl leading-tight"
-                            : "relative line-clamp-2 break-keep rounded-full bg-[#fffaf3] px-3 py-1 font-serif text-xl leading-tight text-[#1a3d2c]"
-                        }
-                      >
+                      <PixelFlake scale={3} tone={person.revealed ? "red" : "navy"} />
+                      <span className="line-clamp-2 break-keep text-2xl font-bold leading-tight">
                         {person.name}
                       </span>
-                      <span
-                        className={
-                          person.revealed
-                            ? "relative text-xs text-[#5d6b5a]"
-                            : "relative text-xs text-[#f7fff8]/85"
-                        }
-                      >
+                      <span className="text-xs tracking-[0.18em] text-[#c7271a]">
                         {person.revealed ? "다시 보기" : "눌러서 뽑기"}
                       </span>
                     </button>
@@ -525,8 +498,9 @@ export function GiftApp() {
                   {banner}
                 </p>
               ) : null}
-              <div className="mx-auto mt-10 max-w-xl border-t border-[#f2d48a]/25 pt-6 text-center">
-                <p className="text-sm leading-6 text-[#d7efe0]/85">
+              <div className="mx-auto mt-10 max-w-xl pt-2 text-center">
+                <div className="dash-row" />
+                <p className="mt-4 text-sm leading-6 text-[#c5d4e6]">
                   짝은 시작할 때 이미 정해져 있어요. 다시 섞거나 명단을 고치면
                   지금까지 연 결과도 사라집니다.
                 </p>
@@ -534,7 +508,7 @@ export function GiftApp() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-11 border-[#f2d48a]/40 bg-[#fffaf3]/10 px-4 text-[#fffaf3] hover:bg-[#fffaf3]/20"
+                    className="h-11 border-[#c7271a] bg-[#e7eef4] px-4 text-[#042a6a] hover:bg-white"
                     onClick={() => setConfirm({ kind: "reshuffle" })}
                   >
                     다시 섞기
@@ -542,7 +516,7 @@ export function GiftApp() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-11 px-4 text-[#fffaf3] hover:bg-[#fffaf3]/15"
+                    className="h-11 px-4 text-[#dee6ed] hover:bg-[#dee6ed]/10"
                     onClick={() => setConfirm({ kind: "unlock" })}
                   >
                     명단 수정
@@ -553,12 +527,13 @@ export function GiftApp() {
           ) : null}
         </div>
       </main>
+      <KnitBand flip />
 
       <Dialog open={dialog != null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="overflow-hidden border-t-8 border-[#c23b2e] bg-[#fffaf3] p-6 text-[#1a3d2c] sm:max-w-md">
+        <DialogContent className="knit-patch overflow-hidden p-6 sm:max-w-md">
           {dialog?.kind === "spin" || dialog?.kind === "landed" ? (
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="font-serif text-2xl">
+              <DialogTitle className="text-2xl font-bold">
                 {dialog.kind === "landed" ? `${dialog.giverName}님의 선물` : "뽑는 중"}
               </DialogTitle>
               <DialogDescription>
@@ -571,7 +546,7 @@ export function GiftApp() {
               </p>
               <p
                 aria-hidden
-                className={`mt-4 min-h-16 text-center font-serif text-4xl text-[#c23b2e] ${
+                className={`mt-4 min-h-16 text-center text-4xl font-bold text-[#c7271a] ${
                   dialog.kind === "landed" ? "settle-in" : ""
                 }`}
               >
@@ -582,14 +557,14 @@ export function GiftApp() {
 
           {dialog?.kind === "loading" ? (
             <DialogHeader>
-              <DialogTitle className="font-serif text-2xl">선물을 여는 중</DialogTitle>
+              <DialogTitle className="text-2xl font-bold">선물을 여는 중</DialogTitle>
               <DialogDescription>잠시만 기다려 주세요.</DialogDescription>
             </DialogHeader>
           ) : null}
 
           {dialog?.kind === "result" ? (
             <DialogHeader>
-              <DialogTitle className="text-center font-serif text-2xl">
+              <DialogTitle className="text-center text-2xl font-bold">
                 {dialog.giverName}님의 선물
               </DialogTitle>
               <DialogDescription className="text-center">
@@ -597,7 +572,7 @@ export function GiftApp() {
               </DialogDescription>
               <p
                 ref={codeRef}
-                className="mt-2 break-all rounded-2xl bg-[#143528] px-4 py-4 text-center font-mono text-lg tracking-wide text-[#fffaf3]"
+                className="mt-2 break-all bg-[#042a6a] px-4 py-4 text-center font-mono text-lg tracking-wide text-[#dee6ed]"
               >
                 {dialog.giftCode}
               </p>
@@ -609,14 +584,14 @@ export function GiftApp() {
                 {copied ? "복사했어요" : "코드 복사"}
               </Button>
               {copyHint ? (
-                <p className="text-center text-sm text-[#c23b2e]">{copyHint}</p>
+                <p className="text-center text-sm text-[#c7271a]">{copyHint}</p>
               ) : null}
             </DialogHeader>
           ) : null}
 
           {dialog?.kind === "error" ? (
             <DialogHeader>
-              <DialogTitle className="font-serif text-2xl">뽑지 못했어요</DialogTitle>
+              <DialogTitle className="text-2xl font-bold">뽑지 못했어요</DialogTitle>
               <DialogDescription>{dialog.message}</DialogDescription>
               <Button
                 type="button"
@@ -639,9 +614,9 @@ export function GiftApp() {
           if (!open && !pending) setConfirm(null);
         }}
       >
-        <DialogContent className="overflow-hidden border-t-8 border-[#1c6b45] bg-[#fffaf3] p-6 text-[#1a3d2c] sm:max-w-md">
+        <DialogContent className="knit-patch overflow-hidden p-6 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-serif text-2xl">
+            <DialogTitle className="text-2xl font-bold">
               {confirm?.kind === "delete"
                 ? "참가자를 뺄까요?"
                 : confirm?.kind === "reshuffle"
@@ -660,7 +635,7 @@ export function GiftApp() {
             <Button
               type="button"
               variant="outline"
-              className="h-11 px-4"
+              className="h-11 border-[#9eb0c6] bg-white px-4 text-[#042a6a] hover:bg-[#d5e0ea]"
               disabled={pending}
               onClick={() => setConfirm(null)}
             >
@@ -685,69 +660,118 @@ export function GiftApp() {
   );
 }
 
-const FLAKES = [
-  { left: "6%", delay: "0s", duration: "13s", size: 5, opacity: 0.75 },
-  { left: "14%", delay: "2s", duration: "16s", size: 3, opacity: 0.5 },
-  { left: "23%", delay: "5s", duration: "12s", size: 6, opacity: 0.85 },
-  { left: "31%", delay: "1s", duration: "18s", size: 4, opacity: 0.6 },
-  { left: "40%", delay: "7s", duration: "14s", size: 3, opacity: 0.45 },
-  { left: "48%", delay: "3s", duration: "15s", size: 7, opacity: 0.8 },
-  { left: "57%", delay: "6s", duration: "11s", size: 4, opacity: 0.55 },
-  { left: "66%", delay: "0.5s", duration: "17s", size: 5, opacity: 0.7 },
-  { left: "74%", delay: "4s", duration: "13s", size: 3, opacity: 0.5 },
-  { left: "83%", delay: "8s", duration: "16s", size: 6, opacity: 0.8 },
-  { left: "91%", delay: "2.5s", duration: "12s", size: 4, opacity: 0.6 },
-  { left: "97%", delay: "9s", duration: "19s", size: 3, opacity: 0.4 },
+const FLAKE_CELLS: Array<[number, number]> = [
+  [0, 0],
+  [0, -1], [0, -2], [0, -3], [0, -4], [0, -5],
+  [0, 1], [0, 2], [0, 3], [0, 4], [0, 5],
+  [-1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0],
+  [1, 0], [2, 0], [3, 0], [4, 0], [5, 0],
+  [-1, -1], [-2, -2], [-3, -3], [-4, -4],
+  [1, -1], [2, -2], [3, -3], [4, -4],
+  [-1, 1], [-2, 2], [-3, 3], [-4, 4],
+  [1, 1], [2, 2], [3, 3], [4, 4],
+  [-1, -4], [1, -4], [-4, -1], [-4, 1],
+  [4, -1], [4, 1], [-1, 4], [1, 4],
+  [-2, -5], [2, -5], [-5, -2], [5, -2],
+  [-2, 5], [2, 5], [-5, 2], [5, 2],
 ];
 
-const BULBS = ["#e24b4b", "#f2d48a", "#7dcea0", "#8ec8ff", "#e24b4b", "#f2d48a", "#7dcea0"];
+const FLAKE_FILL = {
+  white: "#dee6ed",
+  navy: "#042a6a",
+  red: "#c7271a",
+} as const;
 
-function Snow() {
+const SPARKS = [
+  { top: "12%", left: "6%", size: 3, delay: "0s" },
+  { top: "22%", left: "18%", size: 2, delay: "0.8s" },
+  { top: "8%", left: "78%", size: 2, delay: "1.4s" },
+  { top: "30%", left: "92%", size: 3, delay: "0.3s" },
+  { top: "48%", left: "4%", size: 2, delay: "1.8s" },
+  { top: "62%", left: "94%", size: 2, delay: "0.6s" },
+  { top: "74%", left: "10%", size: 3, delay: "1.1s" },
+  { top: "86%", left: "88%", size: 2, delay: "2s" },
+  { top: "40%", left: "84%", size: 2, delay: "0.2s" },
+  { top: "16%", left: "48%", size: 2, delay: "1.6s" },
+];
+
+function PixelFlake({
+  scale = 3,
+  tone = "white",
+}: {
+  scale?: number;
+  tone?: keyof typeof FLAKE_FILL;
+}) {
+  const size = 12 * scale;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="-6 -6 12 12"
+      shapeRendering="crispEdges"
+      aria-hidden
+    >
+      {FLAKE_CELLS.map(([x, y]) => (
+        <rect
+          key={`${x},${y}`}
+          x={x - 0.5}
+          y={y - 0.5}
+          width="1"
+          height="1"
+          fill={FLAKE_FILL[tone]}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function Bobble() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 5 5" shapeRendering="crispEdges" aria-hidden>
+      <rect x="1" y="0" width="3" height="1" fill="#dee6ed" />
+      <rect x="0" y="1" width="5" height="3" fill="#dee6ed" />
+      <rect x="1" y="4" width="3" height="1" fill="#dee6ed" />
+    </svg>
+  );
+}
+
+function KnitBand({ flip = false }: { flip?: boolean }) {
+  return (
+    <div className={flip ? "flex flex-col-reverse" : "flex flex-col"} aria-hidden>
+      <div className="scallop" />
+      <div className="flex justify-evenly px-3 py-2">
+        {Array.from({ length: 9 }, (_, index) => (
+          <Bobble key={index} />
+        ))}
+      </div>
+      <div className="flex justify-evenly px-2 py-1">
+        {Array.from({ length: 5 }, (_, index) => (
+          <PixelFlake key={index} scale={3} />
+        ))}
+      </div>
+      <div className="dash-row" />
+      <div className="dash-row dash-row-offset" />
+    </div>
+  );
+}
+
+function Sparkles() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {FLAKES.map((flake) => (
+      {SPARKS.map((spark) => (
         <span
-          key={flake.left}
-          className="snowflake"
+          key={`${spark.top}-${spark.left}`}
+          className="spark"
           style={{
-            left: flake.left,
-            width: flake.size,
-            height: flake.size,
-            opacity: flake.opacity,
-            animationDuration: flake.duration,
-            animationDelay: flake.delay,
+            top: spark.top,
+            left: spark.left,
+            width: spark.size,
+            height: spark.size,
+            animationDelay: spark.delay,
           }}
         />
       ))}
     </div>
-  );
-}
-
-function Lights() {
-  return (
-    <div className="mt-4 flex items-center justify-center gap-3" aria-hidden>
-      <span className="h-px w-8 bg-[#f2d48a]/50" />
-      {BULBS.map((color, index) => (
-        <span
-          key={`${color}-${index}`}
-          className="size-2.5 rounded-full"
-          style={{ background: color, boxShadow: `0 0 10px ${color}` }}
-        />
-      ))}
-      <span className="h-px w-8 bg-[#f2d48a]/50" />
-    </div>
-  );
-}
-
-function GiftBow() {
-  return (
-    <span aria-hidden className="relative z-10 mb-1 h-14 w-16">
-      <span className="absolute left-0 top-1 h-7 w-8 rounded-[50%] border-[3px] border-[#f6e3a4] bg-[#e7c56a]" />
-      <span className="absolute right-0 top-1 h-7 w-8 rounded-[50%] border-[3px] border-[#f6e3a4] bg-[#e7c56a]" />
-      <span className="absolute left-1/2 top-4 size-4 -translate-x-1/2 rounded-full bg-[#c23b2e] ring-2 ring-[#f6e3a4]" />
-      <span className="absolute left-2 top-8 h-6 w-3 -rotate-[28deg] rounded-b-full bg-[#f2d48a]" />
-      <span className="absolute right-2 top-8 h-6 w-3 rotate-[28deg] rounded-b-full bg-[#f2d48a]" />
-    </span>
   );
 }
 
@@ -783,25 +807,25 @@ function SetupPanel({
   onStart: () => void;
 }) {
   return (
-    <section className="mx-auto w-full max-w-xl overflow-hidden rounded-[1.6rem] bg-[#fffaf3] text-[#1a3d2c] shadow-[0_24px_70px_rgba(4,20,12,0.35)]">
-      <div className="flex items-baseline justify-between gap-3 bg-[#c23b2e] px-5 py-4 text-[#fffaf3] sm:px-7">
-        <h2 className="font-serif text-2xl">참가자</h2>
-        <p className="text-sm text-[#ffe8e4]">{people.length}명</p>
+    <section className="knit-patch mx-auto w-full max-w-xl">
+      <div className="flex items-baseline justify-between gap-3 bg-[#c7271a] px-5 py-4 text-[#f7f4f2] sm:px-7">
+        <h2 className="text-2xl font-bold">참가자</h2>
+        <p className="text-sm">{people.length}명</p>
       </div>
       <div className="px-5 py-6 sm:px-7">
       <form onSubmit={onAdd} className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr_auto]">
         <label className="grid gap-1 text-sm">
-          <span className="text-[#5d6b5a]">이름</span>
+          <span className="text-[#3d5a86]">이름</span>
           <Input
             value={form.name}
             onChange={(event) => onForm({ ...form, name: event.target.value })}
             placeholder="이름"
             maxLength={30}
-            className="h-11 bg-white text-base text-[#1a3d2c]"
+            className="h-11 rounded-none border-[#9eb0c6] bg-white text-base text-[#042a6a]"
           />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-[#5d6b5a]">선물 코드</span>
+          <span className="text-[#3d5a86]">선물 코드</span>
           <Input
             value={form.giftCode}
             onChange={(event) => onForm({ ...form, giftCode: event.target.value })}
@@ -809,7 +833,7 @@ function SetupPanel({
             maxLength={120}
             autoComplete="off"
             spellCheck={false}
-            className="h-11 bg-white text-base text-[#1a3d2c]"
+            className="h-11 rounded-none border-[#9eb0c6] bg-white text-base text-[#042a6a]"
           />
         </label>
         <Button type="submit" className="h-11 self-end px-4" disabled={pending}>
@@ -818,17 +842,17 @@ function SetupPanel({
       </form>
 
       {banner ? (
-        <p role="alert" className="mt-4 rounded-xl bg-[#c23b2e]/10 px-3 py-2 text-sm text-[#c23b2e]">
+        <p role="alert" className="mt-4 bg-[#c7271a]/10 px-3 py-2 text-sm text-[#c7271a]">
           {banner}
         </p>
       ) : null}
 
       {people.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-[#1c6b45]/30 bg-[#e7f3ea] px-4 py-8 text-center text-sm leading-6 text-[#1a3d2c]">
+        <p className="mt-6 border border-dashed border-[#c7271a]/50 bg-[#f7f4f2] px-4 py-8 text-center text-sm leading-6 text-[#042a6a]">
           아직 참가자가 없어요. 이름과 그 사람이 거는 선물 코드를 추가하세요.
         </p>
       ) : (
-        <ul className="mt-5 divide-y divide-[#eadfcd]">
+        <ul className="mt-5 divide-y divide-[#c5d3e0]">
           {people.map((person) => (
             <li key={person.id} className="py-3">
               {editingId === person.id ? (
@@ -838,7 +862,7 @@ function SetupPanel({
                     onChange={(event) => onDraft({ ...draft, name: event.target.value })}
                     aria-label={`${person.name} 이름 수정`}
                     maxLength={30}
-                    className="h-11 bg-white text-[#1a3d2c]"
+                    className="h-11 rounded-none border-[#9eb0c6] bg-white text-[#042a6a]"
                   />
                   <Input
                     value={draft.giftCode}
@@ -849,13 +873,13 @@ function SetupPanel({
                     maxLength={120}
                     autoComplete="off"
                     spellCheck={false}
-                    className="h-11 bg-white text-[#1a3d2c]"
+                    className="h-11 rounded-none border-[#9eb0c6] bg-white text-[#042a6a]"
                   />
                   <div className="flex justify-end gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-10 px-3"
+                      className="h-10 border-[#9eb0c6] bg-white px-3 text-[#042a6a] hover:bg-[#d5e0ea]"
                       onClick={onCancelEdit}
                     >
                       취소
@@ -874,7 +898,7 @@ function SetupPanel({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{person.name}</p>
-                    <p className="mt-0.5 break-all text-sm text-[#5d6b5a]">
+                    <p className="mt-0.5 break-all text-sm text-[#3d5a86]">
                       {person.giftCode}
                     </p>
                   </div>
@@ -890,7 +914,7 @@ function SetupPanel({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-10 px-3 text-[#c23b2e] hover:text-[#c23b2e]"
+                      className="h-10 px-3 text-[#c7271a] hover:text-[#c7271a]"
                       onClick={() => onAskDelete(person)}
                     >
                       빼기
@@ -903,7 +927,7 @@ function SetupPanel({
         </ul>
       )}
 
-      <div className="mt-6 border-t border-[#eadfcd] pt-5">
+      <div className="mt-6 border-t border-[#c5d3e0] pt-5">
         <Button
           type="button"
           className="h-12 w-full text-base"
@@ -912,7 +936,7 @@ function SetupPanel({
         >
           선물 돌리기
         </Button>
-        <p className="mt-3 text-center text-sm leading-6 text-[#5d6b5a]">
+        <p className="mt-3 text-center text-sm leading-6 text-[#3d5a86]">
           {people.length < 3
             ? "세 명 이상이어야 돌릴 수 있어요. 두 명이면 서로 교환밖에 안 돼요."
             : "시작할 때 전체를 짝지어요. 자기 선물도, 둘이 맞바꾸는 일도 없어요."}

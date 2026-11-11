@@ -50,38 +50,38 @@
 }
 
 :root {
-  --background: #10281f;
-  --foreground: #f7fff8;
-  --card: #fffaf3;
-  --card-foreground: #1a3d2c;
-  --popover: #fffaf3;
-  --popover-foreground: #1a3d2c;
-  --primary: #c23b2e;
-  --primary-foreground: #fffaf3;
-  --secondary: #f3ead8;
-  --secondary-foreground: #1a3d2c;
-  --muted: #f3ead8;
-  --muted-foreground: #5d6b5a;
-  --accent: #e7f3ea;
-  --accent-foreground: #1a3d2c;
-  --destructive: #c23b2e;
-  --border: #eadfcd;
-  --input: #e4d7c2;
-  --ring: #c23b2e;
-  --chart-1: #c23b2e;
-  --chart-2: #e7c56a;
-  --chart-3: #1c6b45;
-  --chart-4: #1a3d2c;
-  --chart-5: #fffaf3;
-  --radius: 1rem;
-  --sidebar: #10281f;
-  --sidebar-foreground: #f7fff8;
-  --sidebar-primary: #c23b2e;
-  --sidebar-primary-foreground: #fffaf3;
-  --sidebar-accent: #1c6b45;
-  --sidebar-accent-foreground: #f7fff8;
-  --sidebar-border: #eadfcd;
-  --sidebar-ring: #c23b2e;
+  --background: #042a6a;
+  --foreground: #dee6ed;
+  --card: #e7eef4;
+  --card-foreground: #042a6a;
+  --popover: #e7eef4;
+  --popover-foreground: #042a6a;
+  --primary: #c7271a;
+  --primary-foreground: #f7f4f2;
+  --secondary: #d5e0ea;
+  --secondary-foreground: #042a6a;
+  --muted: #d5e0ea;
+  --muted-foreground: #3d5a86;
+  --accent: #d5e0ea;
+  --accent-foreground: #042a6a;
+  --destructive: #c7271a;
+  --border: #c7271a;
+  --input: #c5d3e0;
+  --ring: #c7271a;
+  --chart-1: #c7271a;
+  --chart-2: #dee6ed;
+  --chart-3: #042a6a;
+  --chart-4: #3d5a86;
+  --chart-5: #e7eef4;
+  --radius: 0.25rem;
+  --sidebar: #042a6a;
+  --sidebar-foreground: #dee6ed;
+  --sidebar-primary: #c7271a;
+  --sidebar-primary-foreground: #f7f4f2;
+  --sidebar-accent: #08357f;
+  --sidebar-accent-foreground: #dee6ed;
+  --sidebar-border: #c7271a;
+  --sidebar-ring: #c7271a;
 }
 
 @layer base {
@@ -89,10 +89,18 @@
     @apply border-border outline-ring/50;
   }
   body {
-    background:
-      radial-gradient(ellipse 70% 42% at 50% -8%, rgba(194, 59, 46, 0.34), transparent 58%),
-      radial-gradient(ellipse 40% 30% at 100% 100%, rgba(231, 197, 106, 0.16), transparent 55%),
-      linear-gradient(180deg, #0e241c 0%, #164233 46%, #0c1f18 100%);
+    background-color: #042a6a;
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        rgba(222, 230, 237, 0.045) 0 2px,
+        transparent 2px 8px
+      ),
+      repeating-linear-gradient(
+        180deg,
+        rgba(2, 16, 48, 0.28) 0 1px,
+        transparent 1px 4px
+      );
     color: var(--foreground);
   }
   html {
@@ -115,21 +123,51 @@
   animation: settle-in 0.45s ease;
 }
 
-@keyframes snow-fall {
-  0% {
-    transform: translate3d(0, -8vh, 0);
-  }
-  100% {
-    transform: translate3d(12px, 108vh, 0);
-  }
+.knit-patch {
+  background-color: #e7eef4;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(4, 42, 106, 0.08) 0 1px,
+    transparent 1px 6px
+  );
+  color: #042a6a;
+  border: 3px solid #c7271a;
+  border-radius: 2px;
 }
 
-.snowflake {
+.scallop {
+  height: 22px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8' shape-rendering='crispEdges' viewBox='0 0 16 8'><rect width='16' height='8' fill='%23042a6a'/><g fill='%23c7271a'><rect x='2' y='0' width='4' height='1'/><rect x='10' y='0' width='4' height='1'/><rect x='1' y='1' width='6' height='1'/><rect x='9' y='1' width='6' height='1'/><rect y='2' width='16' height='3'/><rect x='0' y='5' width='2' height='1'/><rect x='6' y='5' width='4' height='1'/><rect x='14' y='5' width='2' height='1'/><rect x='7' y='6' width='2' height='1'/></g></svg>");
+  background-size: 36px 22px;
+  background-repeat: repeat-x;
+  image-rendering: pixelated;
+}
+
+.dash-row {
+  height: 8px;
+  margin: 0 12px 8px;
+  background-image: linear-gradient(90deg, #c7271a 0 10px, transparent 10px);
+  background-size: 18px 8px;
+  background-repeat: repeat-x;
+  background-position: left center;
+}
+
+.dash-row-offset {
+  background-position: 8px center;
+}
+
+.spark {
   position: absolute;
-  top: 0;
-  border-radius: 999px;
-  background: white;
-  animation-name: snow-fall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  background: #dee6ed;
+  animation: twinkle 2.8s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.95;
+  }
 }
