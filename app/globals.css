@@ -50,38 +50,38 @@
 }
 
 :root {
-  --background: #16110f;
-  --foreground: #f6efe4;
-  --card: #f6efe4;
-  --card-foreground: #2a1814;
-  --popover: #f6efe4;
-  --popover-foreground: #2a1814;
-  --primary: #9d2c22;
-  --primary-foreground: #fff8f2;
-  --secondary: #efe4d4;
-  --secondary-foreground: #2a1814;
-  --muted: #efe4d4;
-  --muted-foreground: #6d584c;
-  --accent: #f3e4d4;
-  --accent-foreground: #2a1814;
-  --destructive: #9d2c22;
-  --border: #e4d5c3;
-  --input: #d9c7b2;
-  --ring: #9d2c22;
-  --chart-1: #9d2c22;
-  --chart-2: #e7c27a;
-  --chart-3: #6d584c;
-  --chart-4: #2a1814;
-  --chart-5: #f6efe4;
-  --radius: 0.9rem;
-  --sidebar: #16110f;
-  --sidebar-foreground: #f6efe4;
-  --sidebar-primary: #9d2c22;
-  --sidebar-primary-foreground: #fff8f2;
-  --sidebar-accent: #2a1814;
-  --sidebar-accent-foreground: #f6efe4;
-  --sidebar-border: #e4d5c3;
-  --sidebar-ring: #9d2c22;
+  --background: #10281f;
+  --foreground: #f7fff8;
+  --card: #fffaf3;
+  --card-foreground: #1a3d2c;
+  --popover: #fffaf3;
+  --popover-foreground: #1a3d2c;
+  --primary: #c23b2e;
+  --primary-foreground: #fffaf3;
+  --secondary: #f3ead8;
+  --secondary-foreground: #1a3d2c;
+  --muted: #f3ead8;
+  --muted-foreground: #5d6b5a;
+  --accent: #e7f3ea;
+  --accent-foreground: #1a3d2c;
+  --destructive: #c23b2e;
+  --border: #eadfcd;
+  --input: #e4d7c2;
+  --ring: #c23b2e;
+  --chart-1: #c23b2e;
+  --chart-2: #e7c56a;
+  --chart-3: #1c6b45;
+  --chart-4: #1a3d2c;
+  --chart-5: #fffaf3;
+  --radius: 1rem;
+  --sidebar: #10281f;
+  --sidebar-foreground: #f7fff8;
+  --sidebar-primary: #c23b2e;
+  --sidebar-primary-foreground: #fffaf3;
+  --sidebar-accent: #1c6b45;
+  --sidebar-accent-foreground: #f7fff8;
+  --sidebar-border: #eadfcd;
+  --sidebar-ring: #c23b2e;
 }
 
 @layer base {
@@ -89,7 +89,11 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background:
+      radial-gradient(ellipse 70% 42% at 50% -8%, rgba(194, 59, 46, 0.34), transparent 58%),
+      radial-gradient(ellipse 40% 30% at 100% 100%, rgba(231, 197, 106, 0.16), transparent 55%),
+      linear-gradient(180deg, #0e241c 0%, #164233 46%, #0c1f18 100%);
+    color: var(--foreground);
   }
   html {
     @apply font-sans;
@@ -109,4 +113,23 @@
 
 .settle-in {
   animation: settle-in 0.45s ease;
+}
+
+@keyframes snow-fall {
+  0% {
+    transform: translate3d(0, -8vh, 0);
+  }
+  100% {
+    transform: translate3d(12px, 108vh, 0);
+  }
+}
+
+.snowflake {
+  position: absolute;
+  top: 0;
+  border-radius: 999px;
+  background: white;
+  animation-name: snow-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
 }
