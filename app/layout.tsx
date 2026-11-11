@@ -23,9 +23,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ko"
-      className={`${ramche.variable} ${mono.variable} h-full antialiased`}
+      className={`${ramche.variable} ${mono.variable} h-full overflow-hidden antialiased`}
     >
-      <body className={`${ramche.className} min-h-full flex flex-col`}>{children}</body>
+      <body className={`${ramche.className} flex h-full min-h-0 flex-col overflow-hidden`}>{children}</body>
     </html>
   );
 }

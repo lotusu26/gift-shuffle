@@ -412,13 +412,13 @@ export function GiftApp() {
   const opened = people.filter((person) => person.revealed).length;
 
   return (
-    <div className="relative flex flex-1 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       <CursorSnow />
-      <KnitBand />
-      <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">
+      <FittedPage>
+      <main className="relative w-full px-6 py-8">
         <Sparkles />
-        <header className="relative mx-auto max-w-xl text-center">
-          <h1 className="mt-3 text-[2.5rem] font-bold tracking-tight text-[#f6ead2] sm:text-[3.3rem]">
+        <header className="relative text-center">
+          <h1 className="mt-3 text-[3.3rem] font-bold tracking-tight whitespace-nowrap text-[#f6ead2]">
             MERRY CHRISTMAS
           </h1>
           <h2 className="mt-3 text-[1.7rem] leading-tight font-bold text-[#FFD166]">
@@ -427,14 +427,14 @@ export function GiftApp() {
           <div className="mt-4 flex justify-center">
             <PixelFlake scale={2} />
           </div>
-          <p className="mt-4 text-base leading-6 font-bold text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.5)] sm:text-lg">
+          <p className="mt-4 text-lg leading-6 font-bold text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]">
             {assigned
               ? "트리 아래 선물을 눌러 코드를 확인하세요."
               : "이름과 카카오톡 선물하기 코드를 넣은 뒤, 한 번에 돌려요."}
           </p>
         </header>
 
-        <div className="mt-10 flex flex-1 flex-col">
+        <div className="mt-8">
           {status === "loading" ? (
             <p className="py-20 text-center text-[#dee6ed]">명단을 불러오는 중</p>
           ) : null}
@@ -494,7 +494,7 @@ export function GiftApp() {
           ) : null}
 
           {status === "ready" && assigned ? (
-            <section className="mt-2 flex flex-1 flex-col items-center">
+            <section className="mt-2 flex flex-col items-center">
               {/* <p className="rounded-[20px] bg-white/15 px-[14px] py-[6px] text-center text-base font-bold text-[#A8E6CF]">
                 {opened === people.length
                   ? "모두 확인했어요. 연 상자는 다시 눌러 코드를 볼 수 있어요."
@@ -570,18 +570,18 @@ export function GiftApp() {
           ) : null}
         </div>
       </main>
-      <KnitBand flip />
+      </FittedPage>
 
       {dialog ? (
-        <div className="fixed inset-0 z-50" role="presentation">
-          <button
-            type="button"
-            className="absolute inset-0 bg-[#10243a]/80"
-            aria-label="닫기"
-            onClick={closeDialog}
-          />
-          <div className="pointer-events-none absolute inset-0 z-[72] flex items-center justify-center px-4">
-            <div className="gift-stage flex max-h-full flex-col items-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto" role="presentation">
+          <div className="relative flex min-h-full items-center justify-center px-4 py-6">
+            <button
+              type="button"
+              className="absolute inset-0 bg-[#10243a]/80"
+              aria-label="닫기"
+              onClick={closeDialog}
+            />
+            <div className="gift-stage pointer-events-none relative z-[72] flex flex-col items-center">
               <div ref={slotRef} className="h-28 w-28 shrink-0" aria-hidden />
               <div
                 role="dialog"
@@ -907,7 +907,7 @@ function ChristmasTree() {
       width={728}
       height={1100}
       draggable={false}
-      className="pixel-art mx-auto mt-2 h-96 w-auto sm:h-[32rem]"
+      className="pixel-art mx-auto mt-2 h-[32rem] w-auto"
     />
   );
 }
@@ -1144,12 +1144,149 @@ function PixelGift({
   );
 }
 
+const STAGE_WIDTH = "42rem";
+
+function useVisualViewportHeight() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      const viewport = window.visualViewport;
+      root.style.height = `${viewport?.height ?? window.innerHeight}px`;
+    };
+    apply();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", apply);
+    viewport?.addEventListener("scroll", apply);
+    window.addEventListener("resize", apply);
+    return () => {
+      viewport?.removeEventListener("resize", apply);
+      viewport?.removeEventListener("scroll", apply);
+      window.removeEventListener("resize", apply);
+      root.style.height = "";
+    };
+  }, []);
+}
+
+function FittedPage({ children }: { children: ReactNode }) {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const bandRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState({ scale: 1, contentW: 0, contentH: 0, bandH: 0 });
+
+  useVisualViewportHeight();
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    const content = contentRef.current;
+    const band = bandRef.current;
+    if (!shell || !content || !band) return;
+
+    const measure = () => {
+      const contentW = Math.round(content.offsetWidth);
+      const contentH = Math.round(content.offsetHeight);
+      const bandH = Math.round(band.offsetHeight);
+      const shellW = shell.clientWidth;
+      const shellH = shell.clientHeight;
+      if (contentW <= 0 || contentH <= 0 || bandH <= 0 || shellW <= 0 || shellH <= 0) return;
+      const scale = Math.round(Math.min(shellW / contentW, shellH / (contentH + bandH * 2)) * 1000) / 1000;
+      setFit((current) => {
+        if (
+          Math.abs(current.scale - scale) < 0.004 &&
+          current.contentW === contentW &&
+          current.contentH === contentH &&
+          current.bandH === bandH
+        ) {
+          return current;
+        }
+        return { scale, contentW, contentH, bandH };
+      });
+    };
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(shell);
+    observer.observe(content);
+    observer.observe(band);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={shellRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <FittedBand scale={fit.scale} bandH={fit.bandH} measureRef={bandRef}>
+        <KnitBand />
+      </FittedBand>
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+        <div
+          className="min-h-0 min-w-0 shrink-0"
+          style={
+            fit.contentW > 0
+              ? { width: fit.contentW * fit.scale, height: fit.contentH * fit.scale }
+              : undefined
+          }
+        >
+          <div
+            ref={contentRef}
+            style={{
+              width: STAGE_WIDTH,
+              transform: `scale(${fit.scale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+      <FittedBand scale={fit.scale} bandH={fit.bandH}>
+        <KnitBand flip />
+      </FittedBand>
+    </div>
+  );
+}
+
+function FittedBand({
+  scale,
+  bandH,
+  measureRef,
+  children,
+}: {
+  scale: number;
+  bandH: number;
+  measureRef?: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const safeScale = scale > 0 ? scale : 1;
+  return (
+    <div
+      className="shrink-0 overflow-hidden"
+      style={bandH > 0 ? { height: bandH * safeScale } : undefined}
+    >
+      <div
+        ref={measureRef}
+        style={{
+          width: `${100 / safeScale}%`,
+          transform: `scale(${safeScale})`,
+          transformOrigin: "top left",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const YOKE = ["heart", "flake", "heart", "flake", "heart", "flake", "heart"] as const;
 
 function KnitBand({ flip = false }: { flip?: boolean }) {
   return (
-    <div className={flip ? "sweater-yoke flex flex-col-reverse" : "sweater-yoke"} aria-hidden>
-      <div className="dash-row" />
+    <div
+      className={
+        flip
+          ? "sweater-yoke flex flex-col-reverse gap-2"
+          : "sweater-yoke flex flex-col gap-2"
+      }
+      aria-hidden
+    >
+      <div className="dash-row !mb-0" />
       <div className="flex items-end justify-evenly px-2 py-2">
         {YOKE.map((kind, index) =>
           kind === "heart" ? (
@@ -1159,7 +1296,7 @@ function KnitBand({ flip = false }: { flip?: boolean }) {
           ),
         )}
       </div>
-      <div className="dash-row dash-row-offset" />
+      <div className="dash-row dash-row-offset !mb-0" />
     </div>
   );
 }
@@ -1218,12 +1355,12 @@ function SetupPanel({
 }) {
   return (
     <section className="knit-patch mx-auto w-full max-w-xl">
-      <div className="flex items-baseline justify-between gap-3 bg-[#c7271a] px-5 py-4 text-[#f7f4f2] sm:px-7">
+      <div className="flex items-baseline justify-between gap-3 bg-[#c7271a] px-7 py-4 text-[#f7f4f2]">
         <h2 className="text-2xl font-bold">참가자</h2>
         <p className="text-sm">{people.length}명</p>
       </div>
-      <div className="px-5 py-6 sm:px-7">
-      <form onSubmit={onAdd} className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr_auto]">
+      <div className="px-7 py-6">
+      <form onSubmit={onAdd} className="grid grid-cols-[0.8fr_1.2fr_auto] gap-3">
         <label className="grid gap-1 text-sm">
           <span className="text-[#3d5a86]">이름</span>
           <Input
@@ -1262,7 +1399,7 @@ function SetupPanel({
           아직 참가자가 없어요. 이름과 그 사람이 거는 선물 코드를 추가하세요.
         </p>
       ) : (
-        <ul className="mt-5 divide-y divide-[#c5d3e0]">
+        <ul className="mt-5 max-h-80 divide-y divide-[#c5d3e0] overflow-y-auto">
           {people.map((person) => (
             <li key={person.id} className="py-3">
               {editingId === person.id ? (
