@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const sans = Noto_Sans_KR({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-noto-sans",
-});
-
-const serif = Noto_Serif_KR({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-  variable: "--font-noto-serif",
+const ramche = localFont({
+  src: "./fonts/Ramche.ttf",
+  variable: "--font-ramche",
+  display: "swap",
 });
 
 const mono = Geist_Mono({
@@ -28,9 +23,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ko"
-      className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}
+      className={`${ramche.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className={`${ramche.className} min-h-full flex flex-col`}>{children}</body>
     </html>
   );
 }

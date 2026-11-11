@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
+import { browserBoard, type Board } from "@/lib/board";
 import { clock } from "@/lib/clock";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PixelGarland } from "@/components/pixel-garland";
 
 type Person = {
   id: string;
@@ -19,65 +21,115 @@ type Person = {
   giftCode: string | null;
 };
 
-type BoardResponse = {
-  assigned: boolean;
-  participants: { id: string; name: string; revealed: boolean }[];
-};
+type GiftTone = "blue" | "gold" | "teal" | "purple";
 
-type RosterResponse = {
-  assigned: boolean;
-  participants: { id: string; name: string; giftCode: string | null }[];
-};
+type GiftOrigin = { x: number; y: number };
 
-type RevealResponse = {
-  giverName: string;
-  giftCode: string;
-};
-
-type DialogState =
-  | { kind: "loading"; receiverId: string; receiverName: string }
-  | { kind: "spin"; receiverId: string; receiverName: string; shown: string }
-  | {
-      kind: "landed";
-      receiverId: string;
-      receiverName: string;
-      giverName: string;
-      giftCode: string;
-    }
-  | {
-      kind: "result";
-      receiverId: string;
-      receiverName: string;
-      giverName: string;
-      giftCode: string;
-    }
-  | { kind: "error"; receiverId: string; receiverName: string; message: string };
+type DialogState = {
+  receiverId: string;
+  receiverName: string;
+  tone: GiftTone;
+  origin: GiftOrigin;
+  width: number;
+} & (
+  | { kind: "spin"; shown: string; codes: string[] }
+  | { kind: "landed"; giftCode: string; codes: string[] }
+  | { kind: "result"; giftCode: string }
+  | { kind: "error"; message: string }
+);
 
 type ConfirmState =
   | { kind: "delete"; id: string; name: string }
   | { kind: "reshuffle" }
   | { kind: "unlock" };
 
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: init?.body ? { "content-type": "application/json" } : undefined,
-  });
-  const data = (await response.json().catch(() => null)) as
-    | (T & { error?: string })
-    | null;
-  if (!response.ok) {
-    throw new Error(data?.error || "요청을 처리하지 못했어요.");
-  }
-  return data as T;
-}
-
 function messageOf(error: unknown) {
-  return error instanceof Error ? error.message : "요청을 처리하지 못했어요.";
+  return error instanceof Error ? error.message : "처리하지 못했어요.";
 }
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+const GIFT_TONES = ["blue", "gold", "teal", "purple"] as const;
+
+function toneFor(index: number): GiftTone {
+  return GIFT_TONES[index % GIFT_TONES.length];
+}
+
+function hashString(value: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function mix(hash: number, salt: number) {
+  let value = Math.imul(hash ^ salt, 0x7feb352d);
+  value = Math.imul(value ^ (value >>> 15), 0x846ca68b);
+  return ((value ^ (value >>> 16)) >>> 0) / 4294967296;
+}
+
+function giftSpots(people: Person[]) {
+  const base = (people.length > 8 ? 44 : people.length > 6 ? 50 : 62) * 1.5;
+  const treePx = 340;
+  const spots = people.map((person) => {
+    const hash = hashString(person.id);
+    return {
+      id: person.id,
+      hash,
+      width: Math.round(base * (0.78 + mix(hash, 3) * 0.36)),
+      tilt: Math.round((mix(hash, 4) - 0.5) * 8),
+      bottom: 0,
+      left: 0,
+      z: 8,
+    };
+  });
+  const ordered = [...spots].sort((a, b) => a.hash - b.hash);
+  const left = ordered.filter((_, index) => index % 2 === 0);
+  const right = ordered.filter((_, index) => index % 2 === 1);
+  for (const spot of left) spot.left = 33;
+  for (const spot of right) spot.left = 67;
+  const separate = (group: typeof spots, side: "left" | "right") => {
+    const line = [...group].sort((a, b) => a.left - b.left);
+    const gapFor = (spot: (typeof spots)[number]) => {
+      const gapPx = 6 + mix(spot.hash, 6) * 16;
+      return (gapPx / treePx) * 100;
+    };
+    if (side === "right") {
+      for (let index = 1; index < line.length; index += 1) {
+        const previous = line[index - 1];
+        const current = line[index];
+        const minLeft =
+          previous.left +
+          ((previous.width / treePx) * 100) / 2 +
+          gapFor(current) +
+          ((current.width / treePx) * 100) / 2;
+        if (current.left < minLeft) current.left = minLeft;
+      }
+      return;
+    }
+    for (let index = line.length - 2; index >= 0; index -= 1) {
+      const next = line[index + 1];
+      const current = line[index];
+      const maxLeft =
+        next.left -
+        ((next.width / treePx) * 100) / 2 -
+        gapFor(current) -
+        ((current.width / treePx) * 100) / 2;
+      if (current.left > maxLeft) current.left = maxLeft;
+    }
+  };
+  separate(left, "left");
+  separate(right, "right");
+  return spots;
+}
+
+function centerOf(node: HTMLElement): GiftOrigin {
+  const rect = node.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
 export function GiftApp() {
@@ -96,8 +148,9 @@ export function GiftApp() {
   const [copyHint, setCopyHint] = useState("");
   const spinToken = useRef(0);
   const codeRef = useRef<HTMLParagraphElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
 
-  const applyBoard = useCallback((board: BoardResponse) => {
+  const applyBoard = useCallback((board: Board) => {
     setAssigned(true);
     setPeople(
       board.participants.map((person) => ({
@@ -110,13 +163,14 @@ export function GiftApp() {
     setStatus("ready");
   }, []);
 
-  const load = useCallback(async () => {
-    const board = await api<BoardResponse>("/api/board");
+  const load = useCallback(() => {
+    const saved = browserBoard();
+    const board = saved.getBoard();
     if (board.assigned) {
       applyBoard(board);
       return;
     }
-    const roster = await api<RosterResponse>("/api/participants");
+    const roster = saved.getRoster();
     setAssigned(false);
     setPeople(
       roster.participants.map((person) => ({
@@ -130,53 +184,39 @@ export function GiftApp() {
   }, [applyBoard]);
 
   useEffect(() => {
-    let cancelled = false;
-    api<BoardResponse>("/api/board")
-      .then(async (board) => {
-        if (cancelled) return;
-        if (board.assigned) {
-          applyBoard(board);
-          return;
-        }
-        const roster = await api<RosterResponse>("/api/participants");
-        if (cancelled) return;
-        setAssigned(false);
-        setPeople(
-          roster.participants.map((person) => ({
-            id: person.id,
-            name: person.name,
-            revealed: false,
-            giftCode: person.giftCode,
-          })),
-        );
-        setStatus("ready");
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setStatus("error");
-        setLoadError(messageOf(error));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [applyBoard]);
+    try {
+      load();
+    } catch (error) {
+      setStatus("error");
+      setLoadError(messageOf(error));
+    }
+  }, [load]);
 
   function closeDialog() {
     spinToken.current += 1;
     setDialog(null);
   }
 
-  async function addPerson(event: FormEvent) {
+  useEffect(() => {
+    if (!dialog) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        spinToken.current += 1;
+        setDialog(null);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dialog]);
+
+  function addPerson(event: FormEvent) {
     event.preventDefault();
     setBanner("");
     setPending(true);
     try {
-      await api("/api/participants", {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
+      browserBoard().addParticipant(form.name, form.giftCode);
       setForm({ name: "", giftCode: "" });
-      await load();
+      load();
     } catch (error) {
       setBanner(messageOf(error));
     } finally {
@@ -184,16 +224,13 @@ export function GiftApp() {
     }
   }
 
-  async function saveEdit(id: string) {
+  function saveEdit(id: string) {
     setBanner("");
     setPending(true);
     try {
-      await api("/api/participants", {
-        method: "PATCH",
-        body: JSON.stringify({ id, ...draft }),
-      });
+      browserBoard().updateParticipant(id, draft.name, draft.giftCode);
       setEditingId(null);
-      await load();
+      load();
     } catch (error) {
       setBanner(messageOf(error));
     } finally {
@@ -201,17 +238,14 @@ export function GiftApp() {
     }
   }
 
-  async function removePerson(id: string) {
+  function removePerson(id: string) {
     setBanner("");
     setPending(true);
     try {
-      await api("/api/participants", {
-        method: "DELETE",
-        body: JSON.stringify({ id }),
-      });
+      browserBoard().removeParticipant(id);
       setConfirm(null);
       if (editingId === id) setEditingId(null);
-      await load();
+      load();
     } catch (error) {
       setBanner(messageOf(error));
     } finally {
@@ -219,11 +253,11 @@ export function GiftApp() {
     }
   }
 
-  async function startDraw() {
+  function startDraw() {
     setBanner("");
     setPending(true);
     try {
-      applyBoard(await api<BoardResponse>("/api/assign", { method: "POST" }));
+      applyBoard(browserBoard().assignAll());
     } catch (error) {
       setBanner(messageOf(error));
     } finally {
@@ -231,28 +265,20 @@ export function GiftApp() {
     }
   }
 
-  async function runConfirm() {
+  function runConfirm() {
     if (!confirm) return;
     setBanner("");
     setPending(true);
     try {
       if (confirm.kind === "delete") {
-        await removePerson(confirm.id);
+        removePerson(confirm.id);
         return;
       }
       if (confirm.kind === "reshuffle") {
-        applyBoard(
-          await api<BoardResponse>("/api/reset", {
-            method: "POST",
-            body: JSON.stringify({ mode: "reshuffle" }),
-          }),
-        );
+        applyBoard(browserBoard().reshuffle());
       } else {
-        await api("/api/reset", {
-          method: "POST",
-          body: JSON.stringify({ mode: "unlock" }),
-        });
-        await load();
+        browserBoard().unlockRoster();
+        load();
       }
       setConfirm(null);
     } catch (error) {
@@ -262,51 +288,53 @@ export function GiftApp() {
     }
   }
 
-  async function openGift(person: Person) {
+  function stageOf(person: Person, source?: HTMLElement) {
+    const index = people.findIndex((item) => item.id === person.id);
+    const origin = source
+      ? centerOf(source)
+      : { x: window.innerWidth / 2, y: window.innerHeight * 0.36 };
+    return {
+      receiverId: person.id,
+      receiverName: person.name,
+      tone: toneFor(Math.max(index, 0)),
+      origin,
+      width: source && source.offsetWidth > 0 ? source.offsetWidth : people.length > 6 ? 78 : 96,
+    };
+  }
+
+  async function openGift(person: Person, source?: HTMLElement) {
     const token = spinToken.current + 1;
     spinToken.current = token;
     setCopied(false);
     setCopyHint("");
+    const stage = stageOf(person, source);
 
     if (person.revealed) {
-      setDialog({
-        kind: "loading",
-        receiverId: person.id,
-        receiverName: person.name,
-      });
       try {
-        const result = await api<RevealResponse>("/api/reveal", {
-          method: "POST",
-          body: JSON.stringify({ id: person.id }),
-        });
+        const result = browserBoard().revealGift(person.id);
         if (spinToken.current !== token) return;
         setDialog({
+          ...stage,
           kind: "result",
-          receiverId: person.id,
-          receiverName: person.name,
-          giverName: result.giverName,
           giftCode: result.giftCode,
         });
       } catch (error) {
         if (spinToken.current !== token) return;
         setDialog({
+          ...stage,
           kind: "error",
-          receiverId: person.id,
-          receiverName: person.name,
           message: messageOf(error),
         });
       }
       return;
     }
 
-    const others = people
-      .filter((item) => item.id !== person.id)
-      .map((item) => item.name);
+    const codes = browserBoard().otherCodes(person.id);
     setDialog({
+      ...stage,
       kind: "spin",
-      receiverId: person.id,
-      receiverName: person.name,
-      shown: others[0] ?? "…",
+      shown: codes[0] ?? "…",
+      codes,
     });
 
     let delay = 70;
@@ -314,7 +342,7 @@ export function GiftApp() {
     const timers: number[] = [];
     const loop = () => {
       if (stopped || spinToken.current !== token) return;
-      const shown = others[Math.floor(Math.random() * others.length)] ?? "…";
+      const shown = codes[Math.floor(Math.random() * codes.length)] ?? "…";
       setDialog((current) =>
         current && current.kind === "spin" && current.receiverId === person.id
           ? { ...current, shown }
@@ -327,10 +355,7 @@ export function GiftApp() {
 
     const started = clock();
     try {
-      const result = await api<RevealResponse>("/api/reveal", {
-        method: "POST",
-        body: JSON.stringify({ id: person.id }),
-      });
+      const result = browserBoard().revealGift(person.id);
       const remaining = 1400 - (clock() - started);
       if (remaining > 0) await wait(remaining);
       stopped = true;
@@ -342,19 +367,16 @@ export function GiftApp() {
       );
       if (spinToken.current !== token) return;
       setDialog({
+        ...stage,
         kind: "landed",
-        receiverId: person.id,
-        receiverName: person.name,
-        giverName: result.giverName,
         giftCode: result.giftCode,
+        codes,
       });
-      await wait(520);
+      await wait(1300);
       if (spinToken.current !== token) return;
       setDialog({
+        ...stage,
         kind: "result",
-        receiverId: person.id,
-        receiverName: person.name,
-        giverName: result.giverName,
         giftCode: result.giftCode,
       });
     } catch (error) {
@@ -362,9 +384,8 @@ export function GiftApp() {
       timers.forEach((timer) => window.clearTimeout(timer));
       if (spinToken.current !== token) return;
       setDialog({
+        ...stage,
         kind: "error",
-        receiverId: person.id,
-        receiverName: person.name,
         message: messageOf(error),
       });
     }
@@ -392,20 +413,23 @@ export function GiftApp() {
 
   return (
     <div className="relative flex flex-1 flex-col">
+      <CursorSnow />
       <KnitBand />
       <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">
         <Sparkles />
         <header className="relative mx-auto max-w-xl text-center">
-          <p className="text-xs tracking-[0.42em] text-[#c7271a]">메리 크리스마스</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight text-[#f6ead2] sm:text-5xl">
-            랜덤 선물 뽑기
+          <h1 className="mt-3 text-[2.5rem] font-bold tracking-tight text-[#f6ead2] sm:text-[3.3rem]">
+            MERRY CHRISTMAS
           </h1>
+          <h2 className="mt-3 text-[1.7rem] leading-tight font-bold text-[#FFD166]">
+            랜덤 선물 뽑기
+          </h2>
           <div className="mt-4 flex justify-center">
             <PixelFlake scale={2} />
           </div>
-          <p className="mt-4 text-sm leading-6 text-[#eadcc8] sm:text-base">
+          <p className="mt-4 text-base leading-6 font-bold text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.5)] sm:text-lg">
             {assigned
-              ? "자기 이름을 누르면 다른 사람의 선물이 열려요."
+              ? "트리 아래 선물을 눌러 코드를 확인하세요."
               : "이름과 카카오톡 선물하기 코드를 넣은 뒤, 한 번에 돌려요."}
           </p>
         </header>
@@ -427,10 +451,12 @@ export function GiftApp() {
                 className="mt-6 h-11 px-5"
                 onClick={() => {
                   setStatus("loading");
-                  load().catch((error: unknown) => {
+                  try {
+                    load();
+                  } catch (error) {
                     setStatus("error");
                     setLoadError(messageOf(error));
-                  });
+                  }
                 }}
               >
                 다시 시도
@@ -468,44 +494,58 @@ export function GiftApp() {
           ) : null}
 
           {status === "ready" && assigned ? (
-            <section>
-              <p className="text-center text-sm text-[#c5d4e6]">
+            <section className="mt-2 flex flex-1 flex-col items-center">
+              {/* <p className="rounded-[20px] bg-white/15 px-[14px] py-[6px] text-center text-base font-bold text-[#A8E6CF]">
                 {opened === people.length
-                  ? "모두 확인했어요. 연 이름은 다시 눌러 코드를 볼 수 있어요."
+                  ? "모두 확인했어요. 연 상자는 다시 눌러 코드를 볼 수 있어요."
                   : `${opened}명 확인 · ${people.length - opened}명 남음`}
-              </p>
-              <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {people.map((person, index) => (
-                  <li key={person.id}>
+              </p> */}
+              <div className="relative mx-auto mt-2 w-fit">
+                <ChristmasTree />
+                {giftSpots(people).map((spot) => {
+                  const person = people.find((item) => item.id === spot.id);
+                  if (!person) return null;
+                  const index = people.findIndex((item) => item.id === person.id);
+                  return (
                     <button
+                      key={person.id}
                       type="button"
-                      onClick={() => openGift(person)}
-                      className="flex min-h-52 w-full flex-col items-center justify-end gap-2 bg-transparent px-2 py-4 transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f6ead2]"
+                      aria-label={`${person.name} ${person.revealed ? "다시 보기" : "열기"}`}
+                      onClick={(event) => {
+                        const gift = event.currentTarget.querySelector(".gift-sprite");
+                        openGift(
+                          person,
+                          gift instanceof HTMLElement ? gift : event.currentTarget,
+                        );
+                      }}
+                      className="group absolute bg-transparent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f6ead2]"
+                      style={{
+                        left: `${spot.left}%`,
+                        bottom: `${spot.bottom}%`,
+                        zIndex: spot.z,
+                        transform: "translateX(-50%)",
+                      }}
                     >
-                      <PixelGift
-                        open={person.revealed}
-                        tone={index % 2 === 0 ? "berry" : "pine"}
-                      />
-                      <span className="line-clamp-2 break-keep text-2xl font-bold leading-tight text-[#f6ead2]">
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap bg-[#f6ead2] px-2 py-1 text-xs font-bold text-[#042a6a] opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
                         {person.name}
                       </span>
-                      <span className="text-xs tracking-[0.18em] text-[#f0c2b4]">
-                        {person.revealed ? "다시 보기" : "눌러서 뽑기"}
+                      <span className="block transition duration-200 group-hover:-translate-y-1">
+                        <span className="block" style={{ transform: `rotate(${spot.tilt}deg)` }}>
+                          <PixelGift tone={toneFor(index)} width={spot.width} />
+                        </span>
                       </span>
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
               {banner ? (
                 <p role="alert" className="mt-4 text-center text-sm text-[#ffd0c8]">
                   {banner}
                 </p>
               ) : null}
-              <div className="mx-auto mt-10 max-w-xl pt-2 text-center">
+              <div className="mx-auto mt-6 max-w-xl pt-2 text-center">
                 <div className="dash-row" />
                 <p className="mt-4 text-sm leading-6 text-[#c5d4e6]">
-                  짝은 시작할 때 이미 정해져 있어요. 다시 섞거나 명단을 고치면
-                  지금까지 연 결과도 사라집니다.
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button
@@ -532,84 +572,99 @@ export function GiftApp() {
       </main>
       <KnitBand flip />
 
-      <Dialog open={dialog != null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="knit-patch overflow-hidden p-6 sm:max-w-md">
-          {dialog?.kind === "spin" || dialog?.kind === "landed" ? (
-            <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-2xl font-bold">
-                {dialog.kind === "landed" ? `${dialog.giverName}님의 선물` : "뽑는 중"}
-              </DialogTitle>
-              <DialogDescription>
-                {dialog.receiverName}님 차례예요. 자기 이름은 나오지 않아요.
-              </DialogDescription>
-              <p className="sr-only">
-                {dialog.kind === "landed"
-                  ? `${dialog.giverName}님의 선물로 정해졌습니다.`
-                  : "추첨 중입니다."}
-              </p>
-              <p
-                aria-hidden
-                className={`mt-4 min-h-16 text-center text-4xl font-bold text-[#c7271a] ${
-                  dialog.kind === "landed" ? "settle-in" : ""
-                }`}
+      {dialog ? (
+        <div className="fixed inset-0 z-50" role="presentation">
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#10243a]/80"
+            aria-label="닫기"
+            onClick={closeDialog}
+          />
+          <div className="pointer-events-none absolute inset-0 z-[72] flex items-center justify-center px-4">
+            <div className="gift-stage flex max-h-full flex-col items-center">
+              <div ref={slotRef} className="h-28 w-28 shrink-0" aria-hidden />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="gift-stage-title"
+                className="gift-popup-card pointer-events-auto relative mt-12 w-[min(27rem,calc(100vw-2rem))] px-6 pb-7 pt-24 text-center text-[var(--ink)]"
               >
-                {dialog.kind === "landed" ? dialog.giverName : dialog.shown}
-              </p>
-            </DialogHeader>
-          ) : null}
-
-          {dialog?.kind === "loading" ? (
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">선물을 여는 중</DialogTitle>
-              <DialogDescription>잠시만 기다려 주세요.</DialogDescription>
-            </DialogHeader>
-          ) : null}
-
-          {dialog?.kind === "result" ? (
-            <DialogHeader>
-              <DialogTitle className="text-center text-2xl font-bold">
-                {dialog.giverName}님의 선물
-              </DialogTitle>
-              <DialogDescription className="text-center">
-                {dialog.receiverName}님이 받는 카카오톡 선물하기 코드예요.
-              </DialogDescription>
-              <p
-                ref={codeRef}
-                className="mt-2 break-all bg-[#042a6a] px-4 py-4 text-center font-mono text-lg tracking-wide text-[#dee6ed]"
-              >
-                {dialog.giftCode}
-              </p>
-              <Button
-                type="button"
-                className="mt-1 h-11"
-                onClick={() => copyCode(dialog.giftCode)}
-              >
-                {copied ? "복사했어요" : "코드 복사"}
-              </Button>
-              {copyHint ? (
-                <p className="text-center text-sm text-[#c7271a]">{copyHint}</p>
+              <PixelGarland />
+              {dialog.kind === "spin" || dialog.kind === "landed" ? (
+                <>
+                  <h2 id="gift-stage-title" className="text-2xl font-bold">
+                    {dialog.kind === "landed" ? "선물 코드" : "코드 뽑는 중"}
+                  </h2>
+                  <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                    {dialog.receiverName}님 차례예요.
+                  </p>
+                  <p className="sr-only">
+                    {dialog.kind === "landed"
+                      ? "선물 코드가 정해졌습니다."
+                      : "추첨 중입니다."}
+                  </p>
+                  <Roulette
+                    entries={dialog.codes}
+                    winner={dialog.kind === "landed" ? dialog.giftCode : null}
+                  />
+                </>
               ) : null}
-            </DialogHeader>
-          ) : null}
 
-          {dialog?.kind === "error" ? (
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">뽑지 못했어요</DialogTitle>
-              <DialogDescription>{dialog.message}</DialogDescription>
-              <Button
-                type="button"
-                className="h-11"
-                onClick={() => {
-                  const person = people.find((item) => item.id === dialog.receiverId);
-                  if (person) void openGift(person);
-                }}
-              >
-                다시 시도
-              </Button>
-            </DialogHeader>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+              {dialog.kind === "result" ? (
+                <>
+                  <h2 id="gift-stage-title" className="text-2xl font-bold">
+                    선물 코드
+                  </h2>
+                  <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                    {dialog.receiverName}님이 받는 카카오톡 선물하기 코드예요.
+                  </p>
+                  <p
+                    ref={codeRef}
+                    className="mt-3 break-all rounded-2xl bg-[var(--night)] px-4 py-4 font-mono text-lg tracking-wide text-[var(--cream)]"
+                  >
+                    {dialog.giftCode}
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-3 h-11 w-full rounded-full"
+                    onClick={() => copyCode(dialog.giftCode)}
+                  >
+                    {copied ? "복사했어요" : "코드 복사"}
+                  </Button>
+                  {copyHint ? (
+                    <p className="mt-2 text-sm text-[var(--berry)]">{copyHint}</p>
+                  ) : null}
+                </>
+              ) : null}
+
+              {dialog.kind === "error" ? (
+                <>
+                  <h2 id="gift-stage-title" className="text-2xl font-bold">뽑지 못했어요</h2>
+                  <p className="mt-2 text-sm text-[var(--ink-soft)]">{dialog.message}</p>
+                  <Button
+                    type="button"
+                    className="mt-4 h-11 rounded-full px-6"
+                    onClick={() => {
+                      const person = people.find((item) => item.id === dialog.receiverId);
+                      if (person) void openGift(person);
+                    }}
+                  >
+                    다시 시도
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </div>
+          </div>
+          <GiftFlight origin={dialog.origin} slot={slotRef}>
+            <CenterGift
+              tone={dialog.tone}
+              width={dialog.width}
+              reveal={dialog.kind === "landed" || dialog.kind === "result"}
+            />
+          </GiftFlight>
+        </div>
+      ) : null}
 
       <Dialog
         open={confirm != null}
@@ -686,16 +741,28 @@ const FLAKE_FILL = {
 } as const;
 
 const SPARKS = [
-  { top: "12%", left: "6%", size: 3, delay: "0s" },
-  { top: "22%", left: "18%", size: 2, delay: "0.8s" },
-  { top: "8%", left: "78%", size: 2, delay: "1.4s" },
-  { top: "30%", left: "92%", size: 3, delay: "0.3s" },
-  { top: "48%", left: "4%", size: 2, delay: "1.8s" },
-  { top: "62%", left: "94%", size: 2, delay: "0.6s" },
-  { top: "74%", left: "10%", size: 3, delay: "1.1s" },
-  { top: "86%", left: "88%", size: 2, delay: "2s" },
-  { top: "40%", left: "84%", size: 2, delay: "0.2s" },
-  { top: "16%", left: "48%", size: 2, delay: "1.6s" },
+  { top: "8%", left: "6%", size: 3, delay: "0s", duration: "2.2s", gold: false },
+  { top: "14%", left: "18%", size: 2, delay: "0.6s", duration: "2.8s", gold: true },
+  { top: "6%", left: "32%", size: 2, delay: "1.4s", duration: "2.4s", gold: false },
+  { top: "11%", left: "48%", size: 3, delay: "0.2s", duration: "3s", gold: true },
+  { top: "7%", left: "64%", size: 2, delay: "1.1s", duration: "2.1s", gold: false },
+  { top: "16%", left: "78%", size: 3, delay: "0.4s", duration: "2.6s", gold: true },
+  { top: "9%", left: "90%", size: 2, delay: "1.8s", duration: "2.3s", gold: false },
+  { top: "24%", left: "4%", size: 2, delay: "0.9s", duration: "2.7s", gold: false },
+  { top: "28%", left: "92%", size: 3, delay: "0.3s", duration: "2.5s", gold: true },
+  { top: "36%", left: "12%", size: 2, delay: "1.6s", duration: "2.2s", gold: true },
+  { top: "40%", left: "86%", size: 2, delay: "0.1s", duration: "3.1s", gold: false },
+  { top: "48%", left: "3%", size: 3, delay: "1.2s", duration: "2.4s", gold: false },
+  { top: "52%", left: "94%", size: 2, delay: "0.7s", duration: "2.9s", gold: true },
+  { top: "60%", left: "8%", size: 2, delay: "1.5s", duration: "2.2s", gold: true },
+  { top: "64%", left: "90%", size: 3, delay: "0.5s", duration: "2.6s", gold: false },
+  { top: "72%", left: "14%", size: 2, delay: "1.9s", duration: "2.3s", gold: false },
+  { top: "76%", left: "84%", size: 2, delay: "0.8s", duration: "2.8s", gold: true },
+  { top: "84%", left: "6%", size: 3, delay: "1.3s", duration: "2.4s", gold: false },
+  { top: "88%", left: "22%", size: 2, delay: "0.2s", duration: "3s", gold: true },
+  { top: "86%", left: "70%", size: 2, delay: "1.7s", duration: "2.1s", gold: false },
+  { top: "92%", left: "48%", size: 3, delay: "0.9s", duration: "2.7s", gold: true },
+  { top: "34%", left: "96%", size: 2, delay: "1s", duration: "2.5s", gold: false },
 ];
 
 function PixelFlake({
@@ -728,6 +795,71 @@ function PixelFlake({
   );
 }
 
+type SnowFlake = {
+  id: number;
+  x: number;
+  y: number;
+  drift: number;
+  duration: number;
+  scale: number;
+};
+
+function CursorSnow() {
+  const [flakes, setFlakes] = useState<SnowFlake[]>([]);
+  const ids = useRef(0);
+  const last = useRef({ x: 0, y: 0, t: 0 });
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    function onMove(event: PointerEvent) {
+      const now = performance.now();
+      const dx = event.clientX - last.current.x;
+      const dy = event.clientY - last.current.y;
+      if (now - last.current.t < 28 && dx * dx + dy * dy < 64) return;
+      last.current = { x: event.clientX, y: event.clientY, t: now };
+
+      const id = ids.current + 1;
+      ids.current = id;
+      const duration = 1200 + Math.random() * 800;
+      const flake: SnowFlake = {
+        id,
+        x: event.clientX + (Math.random() - 0.5) * 18,
+        y: event.clientY,
+        drift: (Math.random() - 0.5) * 36,
+        duration,
+        scale: Math.random() > 0.65 ? 1.15 : 0.75,
+      };
+      setFlakes((current) => [...current, flake].slice(-56));
+      window.setTimeout(() => {
+        setFlakes((current) => current.filter((item) => item.id !== id));
+      }, duration);
+    }
+
+    window.addEventListener("pointermove", onMove);
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden" aria-hidden>
+      {flakes.map((flake) => (
+        <span
+          key={flake.id}
+          className="cursor-snow absolute"
+          style={{
+            left: flake.x,
+            top: flake.y,
+            animationDuration: `${flake.duration}ms`,
+            ["--snow-drift" as string]: `${flake.drift}px`,
+          }}
+        >
+          <PixelFlake scale={flake.scale} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const HEART_CELLS: Array<[number, number]> = [
   [1, 0], [2, 0], [4, 0], [5, 0],
   [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1],
@@ -747,74 +879,285 @@ function PixelHeart() {
   );
 }
 
-function PixelGift({
-  open = false,
-  tone = "berry",
-  scale = 4,
-}: {
-  open?: boolean;
-  tone?: "berry" | "pine";
-  scale?: number;
-}) {
-  const yarn = tone === "pine" ? "#2f6b4f" : "#d4534a";
-  const edge = tone === "pine" ? "#1d4a36" : "#a33b34";
-  const wrap = open ? "#f6ead2" : yarn;
-  const border = open ? "#e2d3b4" : edge;
-  const ribbon = open ? yarn : "#f6ead2";
-  const cells: Array<[number, number, string]> = [];
-  for (let y = 6; y <= 16; y += 1) {
-    for (let x = 1; x <= 14; x += 1) {
-      const outline = x === 1 || x === 14 || y === 6 || y === 16;
-      const band = x === 7 || x === 8 || y === 10 || y === 11;
-      cells.push([x, y, outline ? border : band ? ribbon : wrap]);
-    }
-  }
-  const bow = [
-    [2, 1], [3, 1], [4, 1], [5, 1],
-    [1, 2], [2, 2], [3, 2], [4, 2], [5, 2],
-    [2, 3], [3, 3], [4, 3],
-    [10, 1], [11, 1], [12, 1], [13, 1],
-    [10, 2], [11, 2], [12, 2], [13, 2], [14, 2],
-    [11, 3], [12, 3], [13, 3],
-    [6, 2], [7, 1], [7, 2], [7, 3], [8, 1], [8, 2], [8, 3], [9, 2],
-    [7, 4], [8, 4], [7, 5], [8, 5],
-  ];
-  for (const [x, y] of bow) cells.push([x, y, ribbon]);
+const GIFT_FILES = {
+  blue: { width: 661, height: 809 },
+  gold: { width: 697, height: 810 },
+  teal: { width: 680, height: 807 },
+  purple: { width: 712, height: 823 },
+} as const;
+
+function asset(file: string) {
+  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/assets/${file}`;
+}
+
+const CONFETTI: Array<{ left: string; top: string; dx: string; dy: string; color: string; delay: string; rot: string }> = [
+  { left: "6%", top: "18%", dx: "-16px", dy: "-26px", color: "#E3B23C", delay: "0s", rot: "50deg" },
+  { left: "78%", top: "10%", dx: "18px", dy: "-22px", color: "#C4232A", delay: "0.06s", rot: "-40deg" },
+  { left: "2%", top: "40%", dx: "-20px", dy: "-10px", color: "#F6EAD2", delay: "0.1s", rot: "24deg" },
+  { left: "86%", top: "36%", dx: "16px", dy: "-8px", color: "#3D8F5E", delay: "0.04s", rot: "70deg" },
+  { left: "64%", top: "0%", dx: "10px", dy: "-28px", color: "#F6EAD2", delay: "0.12s", rot: "-18deg" },
+  { left: "18%", top: "0%", dx: "-8px", dy: "-24px", color: "#C4232A", delay: "0.08s", rot: "30deg" },
+];
+
+function ChristmasTree() {
   return (
-    <svg
-      width={16 * scale}
-      height={18 * scale}
-      viewBox="0 0 16 18"
-      shapeRendering="crispEdges"
-      aria-hidden
-    >
-      {cells.map(([x, y, fill]) => (
-        <rect key={`${x},${y}`} x={x} y={y} width="1" height="1" fill={fill} />
-      ))}
-    </svg>
+    <img
+      src={asset("christmas-tree-pixel.png?v=trunk")}
+      alt=""
+      width={728}
+      height={1100}
+      draggable={false}
+      className="pixel-art mx-auto mt-2 h-96 w-auto sm:h-[32rem]"
+    />
   );
 }
 
-const YOKE = ["heart", "flake", "gift", "heart", "flake", "gift", "heart"] as const;
+function frameBulbs(across: number, down: number) {
+  const points: Array<{ x: number; y: number }> = [];
+  const step = (count: number, index: number) => (index / (count - 1)) * 100;
+  for (let i = 0; i < across; i += 1) points.push({ x: step(across, i), y: 0 });
+  for (let i = 1; i < down - 1; i += 1) points.push({ x: 100, y: step(down, i) });
+  for (let i = across - 1; i >= 0; i -= 1) points.push({ x: step(across, i), y: 100 });
+  for (let i = down - 2; i >= 1; i -= 1) points.push({ x: 0, y: step(down, i) });
+  return points;
+}
+
+const SLOT_BULBS = frameBulbs(10, 4);
+const BULB_COLORS = ["#ffe27a", "#ff6b6b", "#ffe27a", "#8fe39a"];
+
+function Roulette({ entries, winner }: { entries: string[]; winner: string | null }) {
+  const roster = entries.join("\u0000");
+  const first = entries[0] ?? "…";
+  const [previous, setPrevious] = useState(first);
+  const [displayed, setDisplayed] = useState(first);
+  const [step, setStep] = useState(0);
+  const displayedRef = useRef(first);
+
+  useEffect(() => {
+    const list = roster ? roster.split("\u0000") : [];
+    if (winner) {
+      setPrevious(displayedRef.current);
+      setDisplayed(winner);
+      displayedRef.current = winner;
+      setStep((current) => current + 1);
+      return;
+    }
+
+    let index = Math.max(0, list.indexOf(displayedRef.current));
+    let timer = 0;
+    const tick = () => {
+      index = (index + 1) % Math.max(list.length, 1);
+      const next = list[index] ?? "…";
+      setPrevious(displayedRef.current);
+      setDisplayed(next);
+      displayedRef.current = next;
+      setStep((current) => current + 1);
+      timer = window.setTimeout(tick, 90);
+    };
+    timer = window.setTimeout(tick, 90);
+    return () => window.clearTimeout(timer);
+  }, [winner, roster]);
+
+  return (
+    <div className={winner ? "slot-machine is-landed" : "slot-machine"} aria-hidden>
+      <div className="slot-crown">LUCKY GIFT</div>
+      <div className="slot-marquee">
+        <div className="slot-bulbs">
+          {SLOT_BULBS.map((bulb, index) => (
+            <span
+              key={index}
+              className="slot-bulb"
+              style={{
+                left: `${bulb.x}%`,
+                top: `${bulb.y}%`,
+                "--i": SLOT_BULBS.length - index,
+                "--bulb": BULB_COLORS[index % BULB_COLORS.length],
+              } as CSSProperties}
+            />
+          ))}
+        </div>
+        <span className="slot-pointer is-left" />
+        <span className="slot-pointer is-right" />
+        <div className="slot-window">
+          <div
+            key={`${step}-${displayed}`}
+            className={winner ? "slot-reel-track is-landing" : "slot-reel-track"}
+          >
+            <span>{previous}</span>
+            <strong>{displayed}</strong>
+          </div>
+        </div>
+      </div>
+      <div className="slot-tray" />
+      <span className="slot-lever"><i /></span>
+    </div>
+  );
+}
+
+function CenterGift({
+  tone,
+  width,
+  reveal,
+}: {
+  tone: GiftTone;
+  width: number;
+  reveal: boolean;
+}) {
+  const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setSettled(true), 780);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  return <PixelGift width={width} tone={tone} open={reveal && settled} />;
+}
+
+function GiftFlight({
+  origin,
+  slot,
+  children,
+}: {
+  origin: GiftOrigin;
+  slot: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [atCenter, setAtCenter] = useState(reduce);
+  const [glued, setGlued] = useState(reduce);
+  const [dest, setDest] = useState(origin);
+
+  useEffect(() => {
+    const node = slot.current;
+    if (!node) return;
+    let flying = !reduce;
+    const place = () => {
+      const rect = node.getBoundingClientRect();
+      setDest({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    };
+    if (reduce) {
+      place();
+      return;
+    }
+    const fly = window.setTimeout(() => {
+      flying = false;
+      place();
+      setAtCenter(true);
+    }, 40);
+    const stick = window.setTimeout(() => setGlued(true), 760);
+    const stage = node.parentElement;
+    const observer = new ResizeObserver(() => {
+      if (!flying) place();
+    });
+    if (stage) observer.observe(stage);
+    const onResize = () => {
+      if (!flying) place();
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.clearTimeout(fly);
+      window.clearTimeout(stick);
+      observer.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [slot, reduce]);
+
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none fixed z-[80] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+        glued ? "transition-none" : "transition-[left,top,transform] duration-700"
+      }`}
+      style={{
+        left: `${dest.x}px`,
+        top: `${dest.y}px`,
+        transform: atCenter
+          ? "translate(-50%, -50%) scale(2.1)"
+          : "translate(-50%, -50%) scale(1)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PixelGift({
+  open = false,
+  tone = "gold",
+  width = 56,
+}: {
+  open?: boolean;
+  tone?: GiftTone;
+  width?: number;
+}) {
+  const [lifted, setLifted] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setLifted(false);
+      return;
+    }
+    const id = window.setTimeout(() => setLifted(true), 30);
+    return () => window.clearTimeout(id);
+  }, [open]);
+
+  const file = GIFT_FILES[tone];
+  const height = Math.round((width * file.height) / file.width);
+
+  return (
+    <span className="gift-sprite" style={{ width, height }}>
+      <img
+        src={asset(`present-${tone}-body-pixel.png?v=seat`)}
+        alt=""
+        width={file.width}
+        height={file.height}
+        draggable={false}
+        className="pixel-art"
+      />
+      <span className={lifted ? "gift-lid is-open" : "gift-lid"}>
+        <img
+          src={asset(`present-${tone}-lid-pixel.png?v=seat`)}
+          alt=""
+          width={file.width}
+          height={file.height}
+          draggable={false}
+          className="pixel-art"
+        />
+      </span>
+      {lifted
+        ? CONFETTI.map((bit) => (
+            <span
+              key={`${bit.left}-${bit.top}`}
+              className="gift-pop-bit"
+              style={{
+                left: bit.left,
+                top: bit.top,
+                background: bit.color,
+                animationDelay: bit.delay,
+                "--dx": bit.dx,
+                "--dy": bit.dy,
+                "--rot": bit.rot,
+              } as CSSProperties}
+            />
+          ))
+        : null}
+    </span>
+  );
+}
+
+const YOKE = ["heart", "flake", "heart", "flake", "heart", "flake", "heart"] as const;
 
 function KnitBand({ flip = false }: { flip?: boolean }) {
   return (
     <div className={flip ? "sweater-yoke flex flex-col-reverse" : "sweater-yoke"} aria-hidden>
       <div className="dash-row" />
       <div className="flex items-end justify-evenly px-2 py-2">
-        {YOKE.map((kind, index) => {
-          if (kind === "heart") return <PixelHeart key={`${kind}-${index}`} />;
-          if (kind === "flake") {
-            return <PixelFlake key={`${kind}-${index}`} scale={2} tone="navy" />;
-          }
-          return (
-            <PixelGift
-              key={`${kind}-${index}`}
-              scale={2}
-              tone={index % 2 === 0 ? "berry" : "pine"}
-            />
-          );
-        })}
+        {YOKE.map((kind, index) =>
+          kind === "heart" ? (
+            <PixelHeart key={`${kind}-${index}`} />
+          ) : (
+            <PixelFlake key={`${kind}-${index}`} scale={2} tone="navy" />
+          ),
+        )}
       </div>
       <div className="dash-row dash-row-offset" />
     </div>
@@ -827,13 +1170,14 @@ function Sparkles() {
       {SPARKS.map((spark) => (
         <span
           key={`${spark.top}-${spark.left}`}
-          className="spark"
+          className={spark.gold ? "spark spark-gold" : "spark"}
           style={{
             top: spark.top,
             left: spark.left,
             width: spark.size,
             height: spark.size,
             animationDelay: spark.delay,
+            animationDuration: spark.duration,
           }}
         />
       ))}

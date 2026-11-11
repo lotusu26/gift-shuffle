@@ -23,4 +23,8 @@ npm run dev
 
 브라우저에서 [http://localhost:3847](http://localhost:3847) 을 엽니다.
 
-`DATABASE_URL`이 있으면 Postgres에 저장합니다. 없으면 프로젝트의 `data/store.json`에 저장합니다. 이 파일은 선물 코드가 들어 있으므로 커밋하지 않습니다.
+이름, 선물 코드, 뽑기 결과는 그 브라우저의 `localStorage`에만 저장됩니다. 다른 기기와 공유되지 않고, 사이트 데이터를 지우면 명단도 사라집니다. 그 브라우저의 개발자 도구에서는 아직 열지 않은 코드도 볼 수 있습니다.
+
+## GitHub Pages
+
+`main`에 푸시하면 GitHub Actions가 정적 파일을 만들어 Pages에 배포합니다. 저장소 Settings → Pages에서 Source를 **GitHub Actions**로 한 번 선택해야 합니다. 배포 주소는 `https://lotusu26.github.io/gift-shuffle/` 입니다.
