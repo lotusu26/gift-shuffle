@@ -143,8 +143,8 @@ function assertUniqueName(state: State, name: string, ignoreId?: string) {
 }
 
 function buildAssignments(participants: Participant[]): Assignment[] {
-  if (participants.length < 2) {
-    throw new StoreError("두 명 이상이어야 돌릴 수 있어요.", 400);
+  if (participants.length < 3) {
+    throw new StoreError("세 명 이상이어야 돌릴 수 있어요.", 400);
   }
   const people = [...participants].sort(byCreated);
   const givers = derangeIds(people.map((person) => person.id));

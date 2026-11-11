@@ -61,6 +61,9 @@ test("assignment never gives anyone their own code", async () => {
     assert.ok(own);
     assert.notEqual(item.giftCode, own[1]);
     assert.notEqual(item.giverName, item.receiver);
+    const partner = reveals.find((other) => other.receiver === item.giverName);
+    assert.ok(partner);
+    assert.notEqual(partner.giverName, item.receiver);
   }
 
   const again = await store.revealGift(created[0].id);
@@ -85,16 +88,18 @@ test("roster edits lock after assignment and unlock again", async () => {
   const store = await loadStore();
   await reset(store);
   await store.addParticipant("민수", "CODE-MINSU");
-  await assert.rejects(() => store.assignAll(), /두 명 이상/);
+  await assert.rejects(() => store.assignAll(), /세 명 이상/);
   await store.addParticipant("지연", "CODE-JIYEON");
+  await assert.rejects(() => store.assignAll(), /세 명 이상/);
+  await store.addParticipant("하늘", "CODE-HANEUL");
   await store.assignAll();
   await assert.rejects(
-    () => store.addParticipant("하늘", "CODE-HANEUL"),
+    () => store.addParticipant("서윤", "CODE-SEOYUN"),
     /명단을 바꿀 수 없어요/,
   );
   await store.unlockRoster();
-  const added = await store.addParticipant("하늘", "CODE-HANEUL");
-  assert.equal(added.name, "하늘");
+  const added = await store.addParticipant("서윤", "CODE-SEOYUN");
+  assert.equal(added.name, "서윤");
 });
 
 test("duplicate names and blank fields are rejected", async () => {

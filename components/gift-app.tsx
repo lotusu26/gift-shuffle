@@ -907,15 +907,15 @@ function SetupPanel({
         <Button
           type="button"
           className="h-12 w-full text-base"
-          disabled={pending || people.length < 2}
+          disabled={pending || people.length < 3}
           onClick={onStart}
         >
           선물 돌리기
         </Button>
         <p className="mt-3 text-center text-sm leading-6 text-[#5d6b5a]">
-          {people.length < 2
-            ? "두 명 이상이어야 돌릴 수 있어요."
-            : "시작할 때 전체를 짝지어요. 마지막에 눌러도 자기 선물은 나오지 않아요."}
+          {people.length < 3
+            ? "세 명 이상이어야 돌릴 수 있어요. 두 명이면 서로 교환밖에 안 돼요."
+            : "시작할 때 전체를 짝지어요. 자기 선물도, 둘이 맞바꾸는 일도 없어요."}
         </p>
       </div>
       </div>
